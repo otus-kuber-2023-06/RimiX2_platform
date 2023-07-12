@@ -1,2 +1,13 @@
-# RimiX2_platform
-RimiX2 Platform repository
+# OTUS k8s-platfrom homework
+## Основное
+
+
+`kubernetes-intro/web/Dockerfile`
+Файл для сборки образа с простым http-сервером и кастомным конфигом
+
+`kubernetes-intro/web-pod.yaml`
+Манифест для разворачивания пода с init-контейнером, который генерирует контент для основного контейнера с образом http-сервера
+###  * Дополнительное
+
+`kubernetes-intro/frontend-pod-health.yaml`
+Исправленный манифест с доавбленными необходимыми для работы пода переменными окружения
