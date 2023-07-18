@@ -52,3 +52,9 @@ spec:
       - hostPath:
           path: /
         name: root
+      # nodeSelector:
+      #   kubernetes.io/os: linux
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
