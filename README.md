@@ -18,9 +18,16 @@
 # 1
 ## Основное (Deployment / Probes)
 
-Созданы манифесты для создания ресурсов deployment для paymentservice двух версий rimix/paysvc:0.0.1 и rimix/paysvc:0.0.2 .
+Созданы манифесты для создания ресурсов deployment для paymentservice двух версий rimix/paysvc:0.0.1 и rimix/paysvc:0.0.2.
 Создан манифест для создания ресурса deployment для frontend версии rimix/otus:frontend2 c включенной ReadinessProbe
-
+Появляется возможность откатывать через CI/CD 
+```
+kubectl rollout undo deployment/frontend
+```
+по результату получения
+```
+kubectl rollout status deployment/frontend --timeout=60s
+```
 ###  * Дополнительное 1 (MaxUnavailable и MaxSurge)
 
 `paymentservice-deployment-bg.yaml`
@@ -32,4 +39,11 @@
 ###  * Дополнительное 2 (DaemonSet)
 
 `node-exporter-daemonset.yaml`
-Манифест для разворачивания daemon-сервисов на всех нодах, включая мастер (для этого использовалась директива tolerations)
+Манифест для разворачивания daemon-сервисов с NodeExporter на порту 9100 на всех нодах, включая мастер (для этого использовалась директива tolerations)
+
+```
+kubectl port-forward <имя любого pod в DaemonSet> 9100:9100
+curl localhost:9100/metrics
+```
+
+
