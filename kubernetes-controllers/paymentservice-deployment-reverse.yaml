@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymentservice
+  labels:
+    app: paymentservice
+spec:
+  replicas: 3
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: paymentservice
+  template:
+    metadata:
+      labels:
+        app: paymentservice
+    spec:
+      # initContainers:
+      # - name: delay
+      #   image: busybox:1.31.0
+      #   command: ['sleep', '5']
+      containers:
+      - name: server
+        image: rimix/paysvc:0.0.1
+        env:
+        - name: DISABLE_PROFILER
+          value: "1"
+        - name: PORT
+          value: "50051"
