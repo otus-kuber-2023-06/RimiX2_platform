@@ -1,3 +1,4 @@
+# Deprecated. Use IPAddressPool.
 apiVersion: v1
 kind: ConfigMap
 metadata:

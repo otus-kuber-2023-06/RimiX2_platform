@@ -47,4 +47,17 @@ kubectl port-forward <имя любого pod в DaemonSet> 9100:9100
 curl localhost:9100/metrics
 ```
 
+# 3 (kubernetes-networks)
 
+```
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/cloud/deploy.yaml
+```
+###  * Дополнительное (LB for CoreDNS)
+
+###  * Дополнительное (K8s-dashboard Ingress)
+###  * Дополнительное (Canary Ingress)
+
+Для этого в Ingress для канареечной версии сервиса используются аннотации:
+- *nginx.ingress.kubernetes.io/canary*
+- *nginx.ingress.kubernetes.io/canary-by-header*
+- *nginx.ingress.kubernetes.io/canary-by-header-value*

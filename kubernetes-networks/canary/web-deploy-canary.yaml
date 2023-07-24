@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-canary
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-canary
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 100%
+  template:
+    metadata:
+      name: web-canary
+      labels:
+        app:  web-canary
+    spec:
+      containers:
+      - name: web
+        image: ghcr.io/rimix2/dockerfile-test:0.0.1
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 8000
+        livenessProbe:
+          tcpSocket:
+            port: 8000
