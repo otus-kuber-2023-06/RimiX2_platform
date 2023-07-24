@@ -8,5 +8,5 @@ roleRef:
   name: admin
 subjects:
 - kind: ServiceAccount
-  name: bob
+  name: bob-sa
   namespace: default
