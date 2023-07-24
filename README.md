@@ -151,16 +151,22 @@ curl http://172.17.255.3/web/ -H "alternative: YES"
 
 ## ServiceAccount / RoleBinding / Role / ClusterRoleBinding / ClusterRole
 
+### Task 1
+
+- Создать Service Account bob , дать ему роль admin в рамках всего
+кластера
+- Создать Service Account dave без доступа к кластеру
+
+
 `task-1/01-bob-sa.yaml` - манифест ServiceAccount (SA) для пользователя **bob**  
-`task-1/02-crb.yaml` - манифест ClusterRoleBinding для выдачи кластерной роли **admin** для SA bob-sa.  
-`task-1/03-bob-sa-token.yaml` - манифест Secret для токена доступа для SA bob-sa. Нужен для версии k8s > 1.23  
-`task-1/04-dave-sa.yaml` - манифест ServiceAccount **dave** 
+`task-1/02-crb.yaml` - манифест ClusterRoleBinding выдачи существующей кластерной роли **admin** для SA bob-sa  
+`task-1/03-bob-sa-token.yaml` - манифест Secret для токена доступа для SA bob-sa. Нужен для версии k8s 1.24 и выще  
 
-Чтобы проверить права у bob-sa, нужно добавить в kubeconfig для kubectl необходимые данные:
+Чтобы проверить через kubectl права у bob-sa, нужно добавить в kubeconfig  необходимые данные:
 ```
-export TOKEN=`kubectl get secret bob-sa-token -o jsonpath='{.data.token}' | base64 --decode`
+export BOB_TOKEN=`kubectl get secret bob-sa-token -o jsonpath='{.data.token}' | base64 --decode`
 
-kubectl config set-credentials bob --token=$TOKEN
+kubectl config set-credentials bob --token=$BOB_TOKEN
 ```
 
 Такая команда выдаст список всех прав в текущем пространстве имен от текущего пользователя:
@@ -173,13 +179,36 @@ kubectl auth can-i list pods -A --user=bob
 ```
 То же самое, но токен доступа указан рядом:
 ```
-kubectl auth can-i list pods -A --user=bob --token=$TOKEN
+kubectl auth can-i list pods -A --user=bob --token=$BOB_TOKEN
 ```
 
+Аналогично - для пользователя **dave**:
+
+`task-1/04-dave-sa.yaml` - манифест ServiceAccount  
+`task-1/05-dave-sa-token.yaml` - манифест Secret для токена доступа
+
+### Task 2
+
+*В этой и следующей задачах токен доступа для проверки прав у SA не создавался.
+
+- Создать Namespace prometheus
+- Создать Service Account carol в этом Namespace
+- Дать всем Service Account в Namespace prometheus возможность делать
+get , list , watch в отношении Pods всего кластера
+
 `task-2/01-prometheus-ns.yaml` - манифест Namespace **prometheus**  
-`task-2/02-carol-sa.yaml` - манифест ServiceAccount  
-`task-2/03-custom-role.yaml` - манифест Role   
-`task-2/04-rb.yaml` - манифест RoleBinding  
+`task-2/02-carol-sa.yaml` - манифест ServiceAccount для пользователя **carol**  
+`task-2/03-custom-role.yaml` - манифест Role для пространства имен prometheus c правами get/list/watch на поды  
+`task-2/04-rb.yaml` - манифест RoleBinding выдачи роли custom-role для SA carol-sa
+
+### Task 3
+
+- Создать Namespace dev
+- Создать Service Account jane в Namespace dev
+- Дать jane роль admin в рамках Namespace dev
+- Создать Service Account ken в Namespace dev
+- Дать ken роль view в рамках Namespace dev
+
 
 `task-3/01-dev-ns.yaml` - манифест Namespace **dev**  
 `task-3/02-jane-sa.yaml` - манифест ServiceAccount **jane**  
