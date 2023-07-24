@@ -52,20 +52,20 @@ curl localhost:9100/metrics
 
 # 3 (kubernetes-networks) - kind
 
-`web-pod.yaml` - манифест пода с "пробами"  
-`web-pod.yaml` - манифест деплоймента с "пробами" и стратегией развертывания
+`kubernetes-networks/web-pod.yaml` - манифест пода с "пробами"  
+`kubernetes-networks/web-deploy.yaml` - манифест деплоймента с "пробами" и стратегией развертывания
 
 ## Service
 
-`web-svc-cip.yaml` - манифест сервиса типа ClusterIP для приложений web
+`kubernetes-networks/web-svc-cip.yaml` - манифест сервиса типа ClusterIP для приложений web
 
 Установка MetalLB:
 ```
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
 ```
 
-`metallb-pool.yaml`  - манифест с пулом адресов для MetalLB. Используется вместо устаревшего ConfigMap  
-`web-svc-lb.yaml` - манифест сервиса типа LoadBalancer для приложений web
+`kubernetes-networks/metallb-pool.yaml`  - манифест с пулом адресов для MetalLB. Используется вместо устаревшего ConfigMap  
+`kubernetes-networks/web-svc-lb.yaml` - манифест сервиса типа LoadBalancer для приложений web
 
 Добавление статического маршрута в кластер (пул MetalLB):
 ```
@@ -79,7 +79,7 @@ curl http://172.17.255.1/
 
 ###  * Дополнительное (LB for CoreDNS)
 
-`coredns/kube-dns-lb.yaml` - манифест сервиса типа LoadBalancer для приложений kube-dns
+`kubernetes-networks/coredns/kube-dns-lb.yaml` - манифест сервиса типа LoadBalancer для приложений kube-dns
 
 Проверка DNS-запроса в Core-DNS по адресу LB:
 ```
@@ -92,9 +92,9 @@ nslookup web-svc.default.svc.cluster.local 172.17.255.2
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/cloud/deploy.yaml
 ```
 
-`nginx-lb.yaml` - манифест сервиса типа LoadBalancer для ingress-nginx. Уже есть в поставке актуальной версии (ссылку см. выше)  
-`web-svc-headless.yaml` - манифест сервиса типа Headless для приложений web  
-`web-ingress.yaml` - манифест Ingress для сервиса web-svc
+`kubernetes-networks/nginx-lb.yaml` - манифест сервиса типа LoadBalancer для ingress-nginx. Уже есть в поставке актуальной версии (ссылку см. выше)  
+`kubernetes-networks/web-svc-headless.yaml` - манифест сервиса типа Headless для приложений web  
+`kubernetes-networks/web-ingress.yaml` - манифест Ingress для сервиса web-svc
 
 Проверка Ingress для приложений web:
 ```
@@ -109,7 +109,7 @@ Dashboard for K8s требует установленых nginx-ingress и cert-
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.yaml
 ```
 
-`dashboard/dashboard-ingress.yaml` - манифест Ingress для сервиса kubernetes-dashboard-web
+`kubernetes-networks/dashboard/dashboard-ingress.yaml` - манифест Ingress для сервиса kubernetes-dashboard-web
 
 ```
 curl http://172.17.255.3/dashboard/
@@ -122,9 +122,9 @@ curl http://172.17.255.3/dashboard/
 - *nginx.ingress.kubernetes.io/canary-by-header*
 - *nginx.ingress.kubernetes.io/canary-by-header-value*
 
-`canary/web-deploy-canary.yaml` - манифест c деплойментом приложения новой версии  
-`canary/web-svc-headless-canary` - манифест сервиса типа Headless для приложений web-canary  
-`canary/web-ingress-canary` - манифест Ingress для проксирования в новую версию по заголовку "alternative=YES"
+`kubernetes-networks/canary/web-deploy-canary.yaml` - манифест c деплойментом приложения новой версии  
+`kubernetes-networks/canary/web-svc-headless-canary` - манифест сервиса типа Headless для приложений web-canary  
+`kubernetes-networks/canary/web-ingress-canary` - манифест Ingress для проксирования в новую версию по заголовку "alternative=YES"
 
 ```
 curl http://172.17.255.3/web/ -H "alternative: YES"
