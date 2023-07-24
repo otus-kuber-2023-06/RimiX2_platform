@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: ghcr.io/rimix2/dockerfile-test:0.0.1
+        image: ghcr.io/rimix2/dockerfile-test:0.0.2
         readinessProbe:
           httpGet:
             path: /index.html
