@@ -134,4 +134,5 @@ curl http://172.17.255.3/web/ -H "alternative: YES"
 
 `kubernetes-volumes/minio-secret.yaml` - манифест Secret для логопаса администратора minIO  
 `kubernetes-volumes/minio-statefulset.yaml` - манифест StatefulSet развертыания minIO в одном экземлпяре с персистентной дисковой памятью  
-`kubernetes-volumes/minio-headless-service.yaml` - манифест сервиса типа Headless для доступа к конкретному экземпляру minIO внутри кластера 
+`kubernetes-volumes/minio-headless-service.yaml` - манифест сервиса minio типа Headless для доступа к конкретному экземпляру minIO внутри кластера по известному IP-адресу (из списка адресов *minio.default.svc.cluster.local*) или по имени *minio-{номер экземпляра}.minio.default.svc.cluster.local*
+
