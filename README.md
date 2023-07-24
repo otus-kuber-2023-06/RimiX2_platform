@@ -1,7 +1,7 @@
 # OTUS k8s-platfrom homework
 
 # 1 (kubernetes-intro)
-## Основное
+## Pod
 
 В результате удаления всех контейнеров через docker или подов через kubectl все они восстановились. Потому что за многими из них следит сервис "kubelet" на ноде (т.н. статические поды), а за динамическими - контроллер репликации.
 
@@ -20,7 +20,7 @@ docker buildx build --push --platform linux/amd64,linux/arm64 --tag ghcr.io/rimi
 Исправленный манифест с доавбленными необходимыми для работы пода переменными окружения
 
 # 2 (kubernetes-controllers)
-## Основное (Deployment / Probes)
+## Deployment / Probes
 
 `kubernetes-controllers/*.yaml`  
 Созданы манифесты для создания ресурсов deployment для paymentservice двух версий rimix/paysvc:0.0.1 и rimix/paysvc:0.0.2.  
@@ -147,3 +147,42 @@ curl http://172.17.255.3/web/ -H "alternative: YES"
 `kubernetes-volumes/my-pod.yaml` - манифест Pod my-pod для использования тома в /app/data, использующего требоваение PVC my-pvc  
 `kubernetes-volumes/my-pod-2.yaml` - манифест второго Pod my-pod-2 для использования того же тома с тем же требованием PVC, что и в первом поде  
 
+# 5 (kubernetes-security) - kind
+
+## ServiceAccount / RoleBinding / Role / ClusterRoleBinding / ClusterRole
+
+`task-1/01-bob-sa.yaml` - манифест ServiceAccount (SA) для пользователя **bob**  
+`task-1/02-crb.yaml` - манифест ClusterRoleBinding для выдачи кластерной роли **admin** для SA bob-sa.  
+`task-1/03-bob-sa-token.yaml` - манифест Secret для токена доступа для SA bob-sa. Нужен для версии k8s > 1.23  
+`task-1/04-dave-sa.yaml` - манифест ServiceAccount **dave** 
+
+Чтобы проверить права у bob-sa, нужно добавить в kubeconfig для kubectl необходимые данные:
+```
+export TOKEN=`kubectl get secret bob-sa-token -o jsonpath='{.data.token}' | base64 --decode`
+
+kubectl config set-credentials bob --token=$TOKEN
+```
+
+Такая команда выдаст список всех прав в текущем пространстве имен от текущего пользователя:
+```
+kubectl auth can-i --list -n default
+```
+Эта - проверит возможность листинга подов во всех пространствах имён от пользователя **bob**:
+```
+kubectl auth can-i list pods -A --user=bob
+```
+То же самое, но токен доступа указан рядом:
+```
+kubectl auth can-i list pods -A --user=bob --token=$TOKEN
+```
+
+`task-2/01-prometheus-ns.yaml` - манифест Namespace **prometheus**  
+`task-2/02-carol-sa.yaml` - манифест ServiceAccount  
+`task-2/03-custom-role.yaml` - манифест Role   
+`task-2/04-rb.yaml` - манифест RoleBinding  
+
+`task-3/01-dev-ns.yaml` - манифест Namespace **dev**  
+`task-3/02-jane-sa.yaml` - манифест ServiceAccount **jane**  
+`task-3/03-jane-rb.yaml` - манифест RoleBinding **admin**  
+`task-3/04-ken-sa.yaml` - манифест ServiceAccount **ken**  
+`task-3/05-ken-rb.yaml` - манифест RoleBinding **view**  

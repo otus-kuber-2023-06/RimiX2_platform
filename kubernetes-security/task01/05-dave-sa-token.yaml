@@ -1,0 +1,11 @@
+# From v1.24 k8s will no longer generate token for SA automatically after its creation.
+# So you have to create Secret with annotations for the specified ServiceAccount and then k8s will fill
+# the secret with token value after its creation.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dave-sa-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: dave-sa
+type: kubernetes.io/service-account-token
