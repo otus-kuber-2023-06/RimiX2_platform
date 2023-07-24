@@ -132,7 +132,18 @@ curl http://172.17.255.3/web/ -H "alternative: YES"
 
 # 4 (kubernetes-volumes) - kind
 
+## StatefulSet
+
 `kubernetes-volumes/minio-secret.yaml` - манифест Secret для логопаса администратора minIO  
 `kubernetes-volumes/minio-statefulset.yaml` - манифест StatefulSet развертыания minIO в одном экземлпяре с персистентной дисковой памятью  
 `kubernetes-volumes/minio-headless-service.yaml` - манифест сервиса minio типа Headless для доступа к конкретному экземпляру minIO внутри кластера по известному IP-адресу (из списка адресов *minio.default.svc.cluster.local*) или по имени *minio-{номер экземпляра}.minio.default.svc.cluster.local*
+
+## PersistentVolume
+
+Ниже приведен пример статического выделения дискового пространтсва для работы подов.
+
+`kubernetes-volumes/my-pv.yaml` - манифест PersistentVolume (PV) my-pv, описывающий тип и свойства постоянной дисковой памяти выделенной в кластере. Выделен тип hostPath с размещением в /mnt/data и размером в 1 гибибайт. Приписан storage-класс manual  
+`kubernetes-volumes/my-pvc.yaml` - манифест Persistent (PVC) my-pvc для текущего namespace=deafault с требованиями выделения дисковой памяти с определенными свойствами для работы будущих подов. Запрошено пространство в 500 мибибайт и классом manual (иначе будет выделен PV по динамической процедуре из класса default)  
+`kubernetes-volumes/my-pod.yaml` - манифест Pod my-pod для использования тома в /app/data, использующего требоваение PVC my-pvc  
+`kubernetes-volumes/my-pod-2.yaml` - манифест второго Pod my-pod-2 для использования того же тома с тем же требованием PVC, что и в первом поде  
 
