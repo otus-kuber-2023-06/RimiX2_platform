@@ -129,3 +129,9 @@ curl http://172.17.255.3/dashboard/
 ```
 curl http://172.17.255.3/web/ -H "alternative: YES"
 ```
+
+# 4 (kubernetes-volumes) - kind
+
+`kubernetes-volumes/minio-secret.yaml` - манифест Secret для логопаса администратора minIO  
+`kubernetes-volumes/minio-statefulset.yaml` - манифест StatefulSet развертыания minIO в одном экземлпяре с персистентной дисковой памятью  
+`kubernetes-volumes/minio-headless-service.yaml` - манифест сервиса типа Headless для доступа к конкретному экземпляру minIO внутри кластера 
