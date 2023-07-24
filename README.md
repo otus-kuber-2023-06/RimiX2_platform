@@ -211,7 +211,7 @@ get , list , watch в отношении Pods всего кластера
 
 
 `task-3/01-dev-ns.yaml` - манифест Namespace **dev**  
-`task-3/02-jane-sa.yaml` - манифест ServiceAccount **jane**  
-`task-3/03-jane-rb.yaml` - манифест RoleBinding **admin**  
-`task-3/04-ken-sa.yaml` - манифест ServiceAccount **ken**  
-`task-3/05-ken-rb.yaml` - манифест RoleBinding **view**  
+`task-3/02-jane-sa.yaml` - манифест ServiceAccount для пользователя **jane**  
+`task-3/03-jane-rb.yaml` - манифест RoleBinding выдачи кластерной роли **admin** для SA jane-sa  
+`task-3/04-ken-sa.yaml` - манифест ServiceAccount для пользователя **ken**  
+`task-3/05-ken-rb.yaml` - манифест RoleBinding выдачи кластерной роли **view** для SA ken-sa  
