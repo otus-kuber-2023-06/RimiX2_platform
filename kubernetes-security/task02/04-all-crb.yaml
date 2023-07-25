@@ -7,7 +7,6 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   name: custom-cluster-role
 subjects:
-- kind: ServiceAccount
-  apiGroup: ""
-  name: *
-  namespace: prometheus
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: system:serviceaccounts:prometheus
