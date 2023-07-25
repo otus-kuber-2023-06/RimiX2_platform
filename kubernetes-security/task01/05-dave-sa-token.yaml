@@ -6,5 +6,5 @@ kind: Secret
 metadata:
   name: dave-sa-token
   annotations:
-    kubernetes.io/service-account.name: dave-sa
+    kubernetes.io/service-account.name: dave
 type: kubernetes.io/service-account-token

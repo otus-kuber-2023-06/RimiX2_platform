@@ -10,5 +10,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   apiGroup: ""
-  name: ken-sa
+  name: ken
 #  namespace: dev

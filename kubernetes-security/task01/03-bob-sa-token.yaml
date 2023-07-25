@@ -6,5 +6,5 @@ kind: Secret
 metadata:
   name: bob-sa-token
   annotations:
-    kubernetes.io/service-account.name: bob-sa
+    kubernetes.io/service-account.name: bob
 type: kubernetes.io/service-account-token

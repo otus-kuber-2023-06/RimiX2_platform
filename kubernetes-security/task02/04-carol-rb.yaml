@@ -10,5 +10,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   apiGroup: ""
-  name: carol-sa
+  name: carol
   namespace: prometheus
