@@ -169,17 +169,17 @@ export BOB_TOKEN=`kubectl get secret bob-sa-token -o jsonpath='{.data.token}' | 
 kubectl config set-credentials bob --token=$BOB_TOKEN
 ```
 
-Такая команда выдаст список всех прав в текущем пространстве имен от текущего пользователя:
+Список всех прав в текущем пространстве имен от текущего пользователя:
 ```
 kubectl auth can-i --list -n default
 ```
-Эта - проверит возможность листинга подов во всех пространствах имён от пользователя **bob**:
+Проверка возможности получения списка подов во всех пространствах имён от пользователя **bob**:
 ```
 kubectl auth can-i list pods -A --user=bob
 ```
-То же самое, но токен доступа указан рядом:
+То же самое, но токен доступа указан рядом и повышен уровень логирования:
 ```
-kubectl auth can-i list pods -A --user=bob --token=$BOB_TOKEN
+kubectl can-i list pods -A --user=bob --token=$BOB_TOKEN
 ```
 
 Аналогично - для пользователя **dave**:
@@ -190,6 +190,10 @@ kubectl auth can-i list pods -A --user=bob --token=$BOB_TOKEN
 ### Task 2
 
 *В этой и следующей задачах токен доступа для проверки прав у SA не создавался.
+Для проверки прав можно использовать impersonation у суперпользователя:
+```
+kubectl --v=7 can-i list pods -A --as=system:serviceaccount:default:bob 
+```
 
 - Создать Namespace prometheus
 - Создать Service Account carol в этом Namespace
@@ -199,7 +203,7 @@ get , list , watch в отношении Pods всего кластера
 `task-2/01-prometheus-ns.yaml` - манифест Namespace **prometheus**  
 `task-2/02-carol-sa.yaml` - манифест ServiceAccount для пользователя **carol**  
 `task-2/03-custom-role.yaml` - манифест Role для пространства имен prometheus c правами get/list/watch на поды  
-`task-2/04-rb.yaml` - манифест RoleBinding выдачи роли custom-role для SA carol-sa
+`task-2/04-rb.yaml` - манифест RoleBinding выдачи роли custom-role для SA carol
 
 ### Task 3
 
@@ -212,6 +216,6 @@ get , list , watch в отношении Pods всего кластера
 
 `task-3/01-dev-ns.yaml` - манифест Namespace **dev**  
 `task-3/02-jane-sa.yaml` - манифест ServiceAccount для пользователя **jane**  
-`task-3/03-jane-rb.yaml` - манифест RoleBinding выдачи кластерной роли **admin** для SA jane-sa  
+`task-3/03-jane-rb.yaml` - манифест RoleBinding выдачи кластерной роли **admin** для SA jane  
 `task-3/04-ken-sa.yaml` - манифест ServiceAccount для пользователя **ken**  
-`task-3/05-ken-rb.yaml` - манифест RoleBinding выдачи кластерной роли **view** для SA ken-sa  
+`task-3/05-ken-rb.yaml` - манифест RoleBinding выдачи кластерной роли **view** для SA ken  

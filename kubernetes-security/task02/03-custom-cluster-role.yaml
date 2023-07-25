@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: custom-role
+  name: custom-cluster-role
   namespace: prometheus
 rules:
 - apiGroups:

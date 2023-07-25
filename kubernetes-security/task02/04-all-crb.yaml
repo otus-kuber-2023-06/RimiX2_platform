@@ -1,14 +1,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: carol-rb
-  namespace: prometheus
+  name: carol-crb
 roleRef:
-  kind: Role
+  kind: ClusterRole
   apiGroup: rbac.authorization.k8s.io
-  name: custom-role
+  name: custom-cluster-role
 subjects:
 - kind: ServiceAccount
   apiGroup: ""
-  name: carol
+  name: *
   namespace: prometheus
