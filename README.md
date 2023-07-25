@@ -202,8 +202,8 @@ get , list , watch в отношении Pods всего кластера
 
 `task-2/01-prometheus-ns.yaml` - манифест Namespace **prometheus**  
 `task-2/02-carol-sa.yaml` - манифест ServiceAccount для пользователя **carol**  
-`task-2/03-custom-role.yaml` - манифест Role для пространства имен prometheus c правами get/list/watch на поды  
-`task-2/04-rb.yaml` - манифест RoleBinding выдачи роли custom-role для SA carol
+`task-2/03-custom-cluster-role.yaml` - манифест ClusterRole c правами get/list/watch на поды  
+`task-2/04-all-crb.yaml` - манифест ClusterRoleBinding выдачи роли custom-cluster-role для всех SA из пространства имен prometheus
 
 ### Task 3
 
