@@ -1,7 +1,7 @@
 # OTUS k8s-platfrom homework
 
 # 1 (kubernetes-intro)
-## Основное
+## Pod
 
 В результате удаления всех контейнеров через docker или подов через kubectl все они восстановились. Потому что за многими из них следит сервис "kubelet" на ноде (т.н. статические поды), а за динамическими - контроллер репликации.
 
@@ -20,7 +20,7 @@ docker buildx build --push --platform linux/amd64,linux/arm64 --tag ghcr.io/rimi
 Исправленный манифест с доавбленными необходимыми для работы пода переменными окружения
 
 # 2 (kubernetes-controllers)
-## Основное (Deployment / Probes)
+## Deployment / Probes
 
 `kubernetes-controllers/*.yaml`  
 Созданы манифесты для создания ресурсов deployment для paymentservice двух версий rimix/paysvc:0.0.1 и rimix/paysvc:0.0.2.  
@@ -147,3 +147,75 @@ curl http://172.17.255.3/web/ -H "alternative: YES"
 `kubernetes-volumes/my-pod.yaml` - манифест Pod my-pod для использования тома в /app/data, использующего требоваение PVC my-pvc  
 `kubernetes-volumes/my-pod-2.yaml` - манифест второго Pod my-pod-2 для использования того же тома с тем же требованием PVC, что и в первом поде  
 
+# 5 (kubernetes-security) - kind
+
+## ServiceAccount / RoleBinding / Role / ClusterRoleBinding / ClusterRole
+
+### Task 1
+
+- Создать Service Account bob , дать ему роль admin в рамках всего
+кластера
+- Создать Service Account dave без доступа к кластеру
+
+
+`task-1/01-bob-sa.yaml` - манифест ServiceAccount (SA) для пользователя **bob**  
+`task-1/02-crb.yaml` - манифест ClusterRoleBinding выдачи существующей кластерной роли **admin** для SA bob-sa  
+`task-1/03-bob-sa-token.yaml` - манифест Secret для токена доступа для SA bob-sa. Нужен для версии k8s 1.24 и выще  
+
+Чтобы проверить через kubectl права у bob-sa, нужно добавить в kubeconfig  необходимые данные:
+```
+export BOB_TOKEN=`kubectl get secret bob-sa-token -o jsonpath='{.data.token}' | base64 --decode`
+
+kubectl config set-credentials bob --token=$BOB_TOKEN
+```
+
+Список всех прав в текущем пространстве имен от текущего пользователя:
+```
+kubectl auth can-i --list -n default
+```
+Проверка возможности получения списка подов во всех пространствах имён от пользователя **bob**:
+```
+kubectl auth can-i list pods -A --user=bob
+```
+То же самое, но токен доступа указан рядом и повышен уровень логирования:
+```
+kubectl can-i list pods -A --user=bob --token=$BOB_TOKEN
+```
+
+Аналогично - для пользователя **dave**:
+
+`task-1/04-dave-sa.yaml` - манифест ServiceAccount  
+`task-1/05-dave-sa-token.yaml` - манифест Secret для токена доступа
+
+### Task 2
+
+*В этой и следующей задачах токен доступа для проверки прав у SA не создавался.
+Для проверки прав можно использовать impersonation у суперпользователя:
+```
+kubectl --v=7 can-i list pods -A --as=system:serviceaccount:default:bob 
+```
+
+- Создать Namespace prometheus
+- Создать Service Account carol в этом Namespace
+- Дать всем Service Account в Namespace prometheus возможность делать
+get , list , watch в отношении Pods всего кластера
+
+`task-2/01-prometheus-ns.yaml` - манифест Namespace **prometheus**  
+`task-2/02-carol-sa.yaml` - манифест ServiceAccount для пользователя **carol**  
+`task-2/03-custom-cluster-role.yaml` - манифест ClusterRole c правами get/list/watch на поды  
+`task-2/04-all-crb.yaml` - манифест ClusterRoleBinding выдачи роли custom-cluster-role для всех SA из пространства имен prometheus
+
+### Task 3
+
+- Создать Namespace dev
+- Создать Service Account jane в Namespace dev
+- Дать jane роль admin в рамках Namespace dev
+- Создать Service Account ken в Namespace dev
+- Дать ken роль view в рамках Namespace dev
+
+
+`task-3/01-dev-ns.yaml` - манифест Namespace **dev**  
+`task-3/02-jane-sa.yaml` - манифест ServiceAccount для пользователя **jane**  
+`task-3/03-jane-rb.yaml` - манифест RoleBinding выдачи кластерной роли **admin** для SA jane  
+`task-3/04-ken-sa.yaml` - манифест ServiceAccount для пользователя **ken**  
+`task-3/05-ken-rb.yaml` - манифест RoleBinding выдачи кластерной роли **view** для SA ken  
