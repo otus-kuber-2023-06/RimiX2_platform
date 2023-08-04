@@ -1,0 +1,9 @@
+https://cdn.otus.ru/media/public/66/db/Kubernetes_operators_HW-139042-66dbcd.pdf
+
+1) secrets
+2) status
+
+python3 -m kopf run mysqloperator.py --verbose
+
+1) operator docker image
+2) operator k8s pack - deployment, rbac, crd
