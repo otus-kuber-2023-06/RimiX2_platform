@@ -98,7 +98,7 @@ def mysql_on_create(body, spec, **kwargs):
     # Пытаемся восстановиться из backup
     try:
         api_batchV1 = kubernetes.client.BatchV1Api()
-        api_batchV1.create_namespaced_job('default', restore_job)
+        api_batchV1.create_namespaced_job(namespace, restore_job)
     except kubernetes.client.rest.ApiException:
         pass
 
