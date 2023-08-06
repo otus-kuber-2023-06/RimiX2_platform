@@ -115,10 +115,10 @@ def mysql_on_create(body, spec, **kwargs):
         pass
 
 
-def delete_success_jobs(instance_name, ns):
+def delete_success_jobs(instance_name, namespace):
     logging.info("start deletion")
     api = kubernetes.client.BatchV1Api()
-    jobs = api.list_namespaced_job(ns)
+    jobs = api.list_namespaced_job(namespace)
     for job in jobs.items:
         jobname = job.metadata.name
         if (jobname == f"backup-{instance_name}-job") or (
@@ -126,17 +126,17 @@ def delete_success_jobs(instance_name, ns):
         ):
             if job.status.succeeded == 1:
                 api.delete_namespaced_job(
-                    jobname, ns, propagation_policy="Background"
+                    jobname, namespace, propagation_policy="Background"
                 )
 
-def wait_until_job_end(jobname, ns):
+def wait_until_job_end(jobname, namespace):
     api_batchV1 = kubernetes.client.BatchV1Api()
     job_finished = False
-    jobs = api_batchV1.list_namespaced_job(ns)
+    jobs = api_batchV1.list_namespaced_job(namespace)
     while (not job_finished) and \
             any(job.metadata.name == jobname for job in jobs.items):
         time.sleep(1)
-        jobs = api_batchV1.list_namespaced_job(ns)
+        jobs = api_batchV1.list_namespaced_job(namespace)
         for job in jobs.items:
             if job.metadata.name == jobname:
                 logging.info(f"job with { jobname }  found,wait untill end")
