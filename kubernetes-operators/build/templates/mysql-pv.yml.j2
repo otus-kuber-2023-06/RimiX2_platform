@@ -4,9 +4,7 @@ metadata:
   name: {{ name }}-pv
   labels:
     pv-usage: {{ name }}
-  
 spec:
-  finalizers: null
   storageClassName: standard
   persistentVolumeReclaimPolicy: Retain
   accessModes:
