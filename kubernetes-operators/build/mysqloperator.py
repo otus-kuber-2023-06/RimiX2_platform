@@ -55,9 +55,9 @@ def mysql_on_create(body, spec, **kwargs):
 
     api = kubernetes.client.CoreV1Api()
 
-    pv_list = api.list_persistent_volume()
-    print(pv_list)
-    if f"{name}-pv" in pv_list.items:
+    pv_list = api.list_persistent_volume(field_selector = f'metadata.name={name}-pv')
+    print(pv_list.items)
+    if len(pv_list.items)==1 :
         logging.info("PV already exists")
         result = api.delete_persistent_volume_with_http_info(f"{name}-pv")
         print(result)
