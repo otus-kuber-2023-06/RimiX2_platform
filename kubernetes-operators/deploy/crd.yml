@@ -13,14 +13,10 @@ spec:
         openAPIV3Schema:
           type: object
           properties:
-            apiVersion:
-              type: string
-            kind:
-              type: string
-            metadata:
+            status:
               type: object
               properties:
-                name:
+                message:
                   type: string
             spec:
               type: object
@@ -33,11 +29,21 @@ spec:
                   type: string
                 storage_size:
                   type: string
+                  pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
               required:
               - image
               - database
               - password
               - storage_size
+      additionalPrinterColumns:
+      - name: Size
+        type: string
+        jsonPath: .spec.storage_size
+      - name: Message
+        type: string
+        jsonPath: .status.message
+      subresources:
+        status: {}            
   names:                # различные форматы имени объекта CR
     kind: MySQL         # kind CR
     plural: mysqls      
