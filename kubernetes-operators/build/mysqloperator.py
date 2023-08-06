@@ -14,9 +14,9 @@ def render_template(filename, vars_dict):
     return json_manifest
 
 
-@kopf.on.delete("persistence.volume.claim")
-def notify(body, spec, **kwargs):
-    logging.info(f"Deleting {body['metadata']['name']}")
+# @kopf.on.delete("persistence.volume.claim")
+# def notify(body, spec, **kwargs):
+#     logging.info(f"Deleting {body['metadata']['name']}")
 
 
 @kopf.on.create("otus.homework", "v1", "mysqls")
@@ -55,14 +55,14 @@ def mysql_on_create(body, spec, **kwargs):
 
     api = kubernetes.client.CoreV1Api()
 
-    pv_list = api.list_persistent_volume(field_selector = f'metadata.name={name}-pv')
-    print(pv_list.items)
-    if len(pv_list.items)==1 :
-        logging.info("PV already exists")
-        result = api.delete_persistent_volume_with_http_info(f"{name}-pv")
-        print(result)
-    else:
-        logging.info("Already existing PV not found")
+    
+    if any(pv.metadata.name == f'{name}-pv' for pv in api.list_persistent_volume().items):
+        print("bang!!!")
+
+    pv_list_1 = api.list_persistent_volume(field_selector = f'metadata.name={name}-pv')
+    if len(pv_list_1.items)==1 :
+        logging.info(f"PV {name}-pv already exists. Deleting ...")
+        result = api.delete_persistent_volume(f"{name}-pv")
 
     # Создаем mysql PV:
     api.create_persistent_volume(persistent_volume)
@@ -83,6 +83,20 @@ def mysql_on_create(body, spec, **kwargs):
     # Создаем mysql Deployment:
     api = kubernetes.client.AppsV1Api()
     api.create_namespaced_deployment(namespace, deployment)
+
+    # Cоздаем PVC и PV для бэкапов:
+    try:
+        backup_pv = render_template('backup-pv.yml.j2', {'name': name})
+        api = kubernetes.client.CoreV1Api()
+        api.create_persistent_volume(backup_pv)
+    except kubernetes.client.rest.ApiException:
+        pass
+    try:
+        backup_pvc = render_template('backup-pvc.yml.j2', {'name': name})
+        api = kubernetes.client.CoreV1Api()
+        api.create_namespaced_persistent_volume_claim(namespace, backup_pvc)
+    except kubernetes.client.rest.ApiException:
+        pass    
 
 
 @kopf.on.delete("otus.homework", "v1", "mysqls")
