@@ -44,7 +44,13 @@ def mysql_on_create(body, spec, **kwargs):
 
     api = kubernetes.client.CoreV1Api()
     # Создаем mysql PV:
-    api.create_persistent_volume(persistent_volume)
+    try: 
+        print(api.create_persistent_volume(persistent_volume))
+    except kubernetes.cliemt.exceptions.ApiException as e:
+        if e.status == 409:
+            pass
+        else:
+            raise e
     # Создаем mysql PVC:
     api.create_namespaced_persistent_volume_claim(namespace,
     persistent_volume_claim)
