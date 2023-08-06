@@ -56,7 +56,7 @@ def mysql_on_create(body, spec, **kwargs):
     api = kubernetes.client.CoreV1Api()
 
     pv_list = api.list_persistent_volume()
-    if f"{name}-pv" in pv_list:
+    if f"{name}-pv" in pv_list.items:
         api.delete_persistent_volume(f"{name}-pv")
         # Создаем mysql PV:
         api.create_persistent_volume(persistent_volume)
