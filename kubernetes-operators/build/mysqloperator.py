@@ -57,7 +57,9 @@ def mysql_on_create(body, spec, **kwargs):
 
     pv_list = api.list_persistent_volume()
     if f"{name}-pv" in pv_list.items:
-        api.delete_persistent_volume(f"{name}-pv")
+        logging.info("PV already exists")
+        result = api.delete_persistent_volume_with_http_info(f"{name}-pv")
+        print(result)
 
     # Создаем mysql PV:
     api.create_persistent_volume(persistent_volume)
