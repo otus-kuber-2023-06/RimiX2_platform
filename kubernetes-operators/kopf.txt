@@ -1,5 +1,7 @@
 https://cdn.otus.ru/media/public/66/db/Kubernetes_operators_HW-139042-66dbcd.pdf
 
+kind
+
 1) secrets
 2) status
 
