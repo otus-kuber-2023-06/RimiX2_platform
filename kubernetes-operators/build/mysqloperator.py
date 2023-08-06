@@ -56,10 +56,13 @@ def mysql_on_create(body, spec, **kwargs):
     api = kubernetes.client.CoreV1Api()
 
     pv_list = api.list_persistent_volume()
+    print(pv_list)
     if f"{name}-pv" in pv_list.items:
         logging.info("PV already exists")
         result = api.delete_persistent_volume_with_http_info(f"{name}-pv")
         print(result)
+    else:
+        logging.info("Already existing PV not found")
 
     # Создаем mysql PV:
     api.create_persistent_volume(persistent_volume)
