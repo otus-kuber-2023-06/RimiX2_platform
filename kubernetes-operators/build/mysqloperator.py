@@ -22,6 +22,7 @@ def mysql_on_create(body, spec, **kwargs):
     password = body["spec"]["password"]
     database = body["spec"]["database"]
     storage_size = body["spec"]["storage_size"]
+    namespace = body["metadata"]["namespace"]
 
     # Генерируем JSON манифесты для деплоя
     persistent_volume = render_template(
@@ -40,10 +41,10 @@ def mysql_on_create(body, spec, **kwargs):
     # Создаем mysql PV:
     api.create_persistent_volume(persistent_volume)
     # Создаем mysql PVC:
-    api.create_namespaced_persistent_volume_claim('default',
+    api.create_namespaced_persistent_volume_claim(namespace,
     persistent_volume_claim)
     # Создаем mysql SVC:
-    api.create_namespaced_service('default', service)
+    api.create_namespaced_service(namespace, service)
     # Создаем mysql Deployment:
     api = kubernetes.client.AppsV1Api()
-    api.create_namespaced_deployment('default', deployment)
+    api.create_namespaced_deployment(namespace, deployment)
