@@ -5,7 +5,6 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: mysql-operator-sa
-  namespace: default
 roleRef:
   kind: ClusterRole
   name: mysql-operator-cr
