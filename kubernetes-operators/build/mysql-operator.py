@@ -2,7 +2,7 @@ import kopf
 import yaml
 import kubernetes
 import time
-import logging
+import logging as logger
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -14,9 +14,27 @@ def render_template(filename, vars_dict):
     return json_manifest
 
 
-# @kopf.on.delete("persistence.volume.claim")
-# def notify(body, spec, **kwargs):
-#     logging.info(f"Deleting {body['metadata']['name']}")
+# @kopf.on.delete("pv")
+# def notify_pv_delete(body, spec, **kwargs):
+#     logger.info(f"Caught deleting PV {body['metadata']['name']} event")
+
+# @kopf.on.update('ms')
+# def resize_mysql_on_update(spec, metadata, **kwargs):
+#     logger.info(f"Caught updating MS {metadata['name']} event")
+#     new_size = spec.get('storage_size', None)
+#     if not new_size:
+#         raise kopf.PermanentError(f"Size must be set. Got {new_size!r}.")
+    
+#     namespace = metadata["namespace"]
+#     name = metadata["name"]
+#     pvc_patch = {'spec': {'resources': {'requests': {'storage': new_size}}}}
+
+#     api_coreV1 = kubernetes.client.CoreV1Api()
+#     obj = api_coreV1.patch_namespaced_persistent_volume_claim(
+#         namespace= namespace,
+#         name=name,
+#         body=pvc_patch,
+#     )
 
 
 @kopf.on.create("otus.homework", "v1", "mysqls")
@@ -61,29 +79,29 @@ def mysql_on_create(body, spec, **kwargs):
 
     api_coreV1 = kubernetes.client.CoreV1Api()
 
+    # Проверка на наличие существующего PV и его удаление
     if any(
         pv.metadata.name == f"{name}-pv"
         for pv in api_coreV1.list_persistent_volume().items
     ):
-        logging.info(f"PV {name}-pv already exists. Deleting ...")
+        logger.info(f"PV {name}-pv already exists. Deleting it ...")
         api_coreV1.delete_persistent_volume(f"{name}-pv")
 
     # pv_list_1 = api.list_persistent_volume(field_selector = f'metadata.name={name}-pv')
     # if len(pv_list_1.items)==1 :
-    #     logging.info(f"PV {name}-pv already exists. Deleting ...")
+    #     logger.info(f"PV {name}-pv already exists. Deleting ...")
     #     api.delete_persistent_volume(f"{name}-pv")
 
-    # Создаем mysql PV:
-    api_coreV1.create_persistent_volume(persistent_volume)
+    # # Создаем mysql PV:
+    # api_coreV1.create_persistent_volume(persistent_volume)
 
-    # try:
-    # Создаем mysql PV:
-    #     logging.info(api.create_persistent_volume(persistent_volume))
-    # except kubernetes.client.exceptions.ApiException as e:
-    #     if e.status == 409:
-    #         pass
-    #     else:
-    #         raise e
+    try:
+    #Создаем mysql PV:
+        api_coreV1.create_persistent_volume(persistent_volume)
+    except kubernetes.client.exceptions.ApiException as e:
+        if e.status == 409:
+            logger.warning(f"PV {name}-p is not deleted yet")
+            raise e
 
     # Создаем mysql PVC:
     api_coreV1.create_namespaced_persistent_volume_claim(
@@ -116,7 +134,7 @@ def mysql_on_create(body, spec, **kwargs):
 
 
 def delete_success_jobs(instance_name, namespace):
-    logging.info("start deletion")
+    logger.info("Deleting success jobs ...")
     api = kubernetes.client.BatchV1Api()
     jobs = api.list_namespaced_job(namespace)
     for job in jobs.items:
@@ -139,9 +157,9 @@ def wait_until_job_end(jobname, namespace):
         jobs = api_batchV1.list_namespaced_job(namespace)
         for job in jobs.items:
             if job.metadata.name == jobname:
-                logging.info(f"job with { jobname }  found,wait untill end")
+                logger.info(f"Job {jobname} found, waiting for complete")
                 if job.status.succeeded == 1:
-                    logging.info(f"job with { jobname } success")
+                    logger.info(f"Job {jobname} completed")
                     job_finished = True
 
 @kopf.on.delete("otus.homework", "v1", "mysqls")

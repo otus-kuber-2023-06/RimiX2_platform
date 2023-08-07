@@ -15,9 +15,7 @@ spec:
           properties:
             status:
               type: object
-              properties:
-                message:
-                  type: string
+              x-kubernetes-preserve-unknown-fields: true
             spec:
               type: object
               properties:
