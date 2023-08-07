@@ -7,5 +7,11 @@ kind
 
 python3 -m kopf run mysqloperator.py --verbose
 
+
+kubectl exec -it $MYSQLPOD -- mysql -uroot -potuspassword -e "show databases"
+kubectl exec -it $MYSQLPOD -- mysql -uroot -potuspassword -e "insert into test (name) values ("333")" otus-database
+kubectl exec -it $MYSQLPOD -- mysql -uroot -potuspassword -e "select * from test" otus-database
+
+
 1) operator docker image
 2) operator k8s pack - deployment, rbac, crd
