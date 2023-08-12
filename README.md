@@ -222,21 +222,32 @@ get , list , watch в отношении Pods всего кластера
 
 # 5 (kubernetes-templating) - minikube (k8s 1.21.14)
 
-kubectl create namespace nginx-ingress
 helm repo add stable https://charts.helm.sh/stable
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 
 helm repo update
 
-helm search repo stable/nginx-ingress --versions
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace=nginx-ingress --create-namespace
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.crds.yaml
+helm upgrade --install cert-manager jetstack/cert-manager --wait --namespace=cert-manager --create-namespace
 
-helm upgrade --install nginx-ingress nginx-stable/nginx-ingress --namespace=nginx-ingress --set controller.disableIPV6=true --version=0.16.0
 
-helm history nginx-ingress -n nginx-ingress
-
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.16.1/cert-manager.crds.yaml
-helm upgrade --install cert-manager jetstack/cert-manager --wait --namespace=cert-manager --create-namespace --version=0.16.1
 
 https://habr.com/ru/companies/flant/articles/496936/
 https://www.digitalocean.com/community/tutorials/how-to-secure-your-site-in-kubernetes-with-cert-manager-traefik-and-let-s-encrypt
 https://cloud.yandex.com/en/docs/managed-kubernetes/tutorials/ingress-cert-manager
+
+
+kubectl create deployment static-site --image=dockersamples/static-site --port=80
+kubectl expose deployment/static-site --port 80 --target-port 80 
+kubectl create ingress static-site --rule=test.dev.ganiev.su/static-site=static-site:80 --class=nginx --annotation=nginx.ingress.kubernetes.io/rewrite-target=/
+
+kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http=issuer.yaml
+kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http-staging-issuer.yaml
+
+annotations:
+    cert-manager.io/issuer: "letsencrypt-staging"
+
+tls:
+    - hosts:
+        - test.dev.ganiev.su
+        secretName: letsencrypt-staging
