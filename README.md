@@ -222,7 +222,6 @@ get , list , watch в отношении Pods всего кластера
 
 # 5 (kubernetes-templating) - minikube (k8s 1.21.14)
 
-helm repo add stable https://charts.helm.sh/stable
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 
 helm repo update
 
@@ -251,3 +250,23 @@ tls:
     - hosts:
         - test.dev.ganiev.su
         secretName: letsencrypt-staging
+
+## Chartmuseum
+
+https://github.com/chartmuseum/charts/tree/main/src/chartmuseum/values.yaml
+
+helm repo add chartmuseum https://chartmuseum.github.io/charts
+helm repo update
+helm search repo chartmuseum --versions
+
+helm upgrade --install my-chartmuseum chartmuseum/chartmuseum -f chartmuseum/values.yaml --namespace=chartmuseum --create-namespace 
+helm ls -n chartmuseum
+kubectl get events -n chartmuseum --sort-by=.lastTimestamp
+
+https://github.com/helm/chartmuseum
+
+## Harbor
+
+helm repo add harbor https://helm.goharbor.io
+helm repo update
+helm upgrade --install my-harbor harbor/harbor -f harbor/values.yaml --namespace=harbor --create-namespace 
