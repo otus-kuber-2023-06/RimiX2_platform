@@ -222,23 +222,22 @@ get , list , watch в отношении Pods всего кластера
 
 # 5 (kubernetes-templating) - minikube (k8s 1.21.14)
 
+## Nginx Ingress
+
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 
 helm repo update
-
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace=nginx-ingress --create-namespace
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.crds.yaml
-helm upgrade --install cert-manager jetstack/cert-manager --wait --namespace=cert-manager --create-namespace
-
-
-
-https://habr.com/ru/companies/flant/articles/496936/
-https://www.digitalocean.com/community/tutorials/how-to-secure-your-site-in-kubernetes-with-cert-manager-traefik-and-let-s-encrypt
-https://cloud.yandex.com/en/docs/managed-kubernetes/tutorials/ingress-cert-manager
-
 
 kubectl create deployment static-site --image=dockersamples/static-site --port=80
 kubectl expose deployment/static-site --port 80 --target-port 80 
 kubectl create ingress static-site --rule=test.dev.ganiev.su/static-site=static-site:80 --class=nginx --annotation=nginx.ingress.kubernetes.io/rewrite-target=/
+
+## Cert Manager
+
+helm repo add jetstack https://charts.jetstack.io
+
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.crds.yaml
+helm upgrade --install cert-manager jetstack/cert-manager --wait --namespace=cert-manager --create-namespace
 
 kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http=issuer.yaml
 kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http-staging-issuer.yaml
@@ -259,7 +258,7 @@ helm repo add chartmuseum https://chartmuseum.github.io/charts
 helm repo update
 helm search repo chartmuseum --versions
 
-helm upgrade --install my-chartmuseum chartmuseum/chartmuseum -f chartmuseum/values.yaml --namespace=chartmuseum --create-namespace 
+helm upgrade --install chartmuseum chartmuseum/chartmuseum -f chartmuseum/values.yaml --namespace=chartmuseum --create-namespace 
 helm ls -n chartmuseum
 kubectl get events -n chartmuseum --sort-by=.lastTimestamp
 
@@ -269,10 +268,11 @@ https://github.com/helm/chartmuseum
 
 helm repo add harbor https://helm.goharbor.io
 helm repo update
-helm upgrade --install my-harbor harbor/harbor -f harbor/values.yaml --namespace=harbor --create-namespace 
+helm upgrade --install harbor harbor/harbor -f harbor/values.yaml --namespace=harbor --create-namespace 
 
 ## Helmfile
 
 https://github.com/helmfile/helmfile
 
-helmfile apply
+helmfile repos
+helmfile sync

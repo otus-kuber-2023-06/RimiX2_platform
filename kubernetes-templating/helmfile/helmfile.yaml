@@ -1,13 +1,30 @@
-#nginx-ingress, cert-manager и harbor 
-
 repositories:
-- name: prometheus-community
-  url: https://prometheus-community.github.io/helm-charts
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: harbor
+    url: https://helm.goharbor.io    
+
+helmfiles:
+  - path: helmfile-nested.yaml
+missingFileHandler: Error
 
 releases:
-- name: prom-norbac-ubuntu
-  namespace: prometheus
-  chart: prometheus-community/prometheus
-  set:
-  - name: rbac.create
-    value: false
+  - name: cert-manager
+    # installed: false
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+  - name: harbor
+    namespace: harbor
+    # installed: false
+    chart: harbor/harbor
+    set:
+    - name: expose.tls.secret.secretName
+      value: harbor.dev.ganiev.su
+    - name: expose.ingress.hosts.core
+      value: harbor.dev.ganiev.su
+    - name: expose.ingress.className
+      value: nginx
+    - name: expose.ingress.harbor.annotations.cert-manager\.io\/cluster-issuer
+      value: letsencrypt
+    - name: externalURL
+      value: https://harbor.dev.ganiev.su
