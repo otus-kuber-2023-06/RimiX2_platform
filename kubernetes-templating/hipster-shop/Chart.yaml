@@ -27,3 +27,6 @@ dependencies:
 - name: frontend
   version: 0.1.0
   repository: "file://../frontend"
+- name: redis
+  version: 17.15.4
+  repository: "@bitnami"

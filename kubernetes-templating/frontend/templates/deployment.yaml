@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: frontend
 spec:
+  replicas: {{ .Values.pod.replicas }}
   selector:
     matchLabels:
       app: frontend
@@ -11,7 +12,6 @@ spec:
       labels:
         app: frontend
     spec:
-      replicas: {{ .Values.pod.replicas }}
       containers:
         - name: server
           image: gcr.io/google-samples/microservices-demo/frontend:{{ .Values.pod.imagetag }}

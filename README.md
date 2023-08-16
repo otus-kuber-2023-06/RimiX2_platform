@@ -342,11 +342,17 @@ helmfile apply
 
 ## * Свой helm-чарт
 
+
+helm dep update kubernetes-templating/hipster-shop  
 ```
 helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespace hipster-shop --create-namespace
 ```
 
 ### * Дополнительное (chart dependencies)
+
+`kubernetes-templating/hipster-shop/Chart.yaml` - указаны зависимости, в том числе для Redis
+`kubernetes-templating/hipster-shop/values.yaml` - настроенные переменные для Redis
+
 ## helm-secrets
 
 ## kubecfg
