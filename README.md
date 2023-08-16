@@ -222,57 +222,130 @@ get , list , watch в отношении Pods всего кластера
 
 # 5 (kubernetes-templating) - minikube (k8s 1.21.14)
 
-## Nginx Ingress
+## Nginx Ingress 
 
+
+
+Установка Nginx Ingress из чарта:
+```
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 
 helm repo update
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace=nginx-ingress --create-namespace
-
+```
+Проверка работы установленного контроллера:
+```
 kubectl create deployment static-site --image=dockersamples/static-site --port=80
 kubectl expose deployment/static-site --port 80 --target-port 80 
 kubectl create ingress static-site --rule=test.dev.ganiev.su/static-site=static-site:80 --class=nginx --annotation=nginx.ingress.kubernetes.io/rewrite-target=/
+curl -IL http://test.dev.ganiev.su/static-site
+```
 
 ## Cert Manager
 
-helm repo add jetstack https://charts.jetstack.io
-
+Предварительная установка CRD, необходимых для работы оператора cert-manager в k8s:
+```
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.crds.yaml
+```
+Установка из чарта:
+```helm repo add jetstack https://charts.jetstack.io
 helm upgrade --install cert-manager jetstack/cert-manager --wait --namespace=cert-manager --create-namespace
+```
 
+Установка необходимых для работы с Let's Encrypt ресурсов k8s для cert-manager (Issuer, ClusterIssuer):
+```
 kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http=issuer.yaml
 kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http-staging-issuer.yaml
-
-annotations:
-    cert-manager.io/issuer: "letsencrypt-staging"
-
-tls:
-    - hosts:
-        - test.dev.ganiev.su
-        secretName: letsencrypt-staging
+```
+Теперь при заведении нового Ingress для автоматического получения и продления сертификата TLS от Let's Encrypt необходимо добавить аннотацию и секрет в метадату и спецификацию, как пример, для хоста test.dev.ganiev.su:
+```
+metadata:
+    annotations:
+        cert-manager.io/issuer: "letsencrypt-staging"
+```
+```
+spec:
+    tls:
+        - hosts:
+            - test.dev.ganiev.su
+            secretName: letsencrypt-staging
+```            
 
 ## Chartmuseum
 
-https://github.com/chartmuseum/charts/tree/main/src/chartmuseum/values.yaml
-
+Добавление репозитория для поиска и установки чарта:
+```
 helm repo add chartmuseum https://chartmuseum.github.io/charts
 helm repo update
 helm search repo chartmuseum --versions
+```
+Для настройки чарта (в частности ingress) необходимо поправить values-файл из чарта и сохранить его:
+```
+helm show values chartmuseum/chartmuseum > chartmuseum/values.yaml
+```
 
-helm upgrade --install chartmuseum chartmuseum/chartmuseum -f chartmuseum/values.yaml --namespace=chartmuseum --create-namespace 
+Установка чарта chartmuseum последней версии:
+```
+helm upgrade --install chartmuseum chartmuseum/chartmuseum -f chartmuseum/values.yaml \
+--namespace=chartmuseum --create-namespace --set persistence.enabled=true,env.open.DISABLE_API=false
 helm ls -n chartmuseum
 kubectl get events -n chartmuseum --sort-by=.lastTimestamp
+```
 
-https://github.com/helm/chartmuseum
+### Работа с репозиторием chartmuseum производится через его API:
 
+https://github.com/helm/chartmuseum - документация
+
+`GET /api/charts` - получить список всех чартов  
+`GET /api/charts/mychart` - получить список всех версий mychart  
+`GET /api/charts/mychart/0.1.2` - получить описание mychart версии 0.1.2  
+`GET /api/charts/mychart/0.1.2/templates` - получить темплейты mychart версии 0.1.2  
+`GET /api/charts/mychart/0.1.2/values` - получить файл с настраиваемыми переменными для mychart версии 0.1.2  
+`HEAD /api/charts/mychart` - проверка наличия mychart (любой версии)  
+`HEAD /api/charts/mychart/0.1.2` - проверка наличия mychart версии 0.1.2  
+`POST /api/charts` - загрузить новую версию чарта  
+`POST /api/prov` - загрузить подпись чарта  
+`DELETE /api/charts/mychart/0.1.2` - удалить версию 0.1.2 mychart (вместе с подписью)  
+
+Пример загрузки новой версии чарта с помощью curl:
+```
+curl -X POST --data-binary "@mychart-0.1.3.tgz" https://chartmuseum.dev.ganiev.su/api/charts
+```
+Установка чарта из репозитория chartmuseum стандратная - с предварительным добавлением репозитория в helm. Пример:
+```
+helm repo add mychartmuseum https://chartmuseum.dev.ganiev.su
+helm install mychartmuseum/mychart --generate-name
+```
 ## Harbor
 
+Добавление репозитория для установки чарта:
+```
 helm repo add harbor https://helm.goharbor.io
 helm repo update
+```
+Для настройки чарта (в частности ingress) необходимо поправить values-файл из чарта и сохранить его:
+```
+helm show values harbor/harbor > harbor/values.yaml
+```
+Установка harbor из чарта:
+```
 helm upgrade --install harbor harbor/harbor -f harbor/values.yaml --namespace=harbor --create-namespace 
+```
 
 ## Helmfile
 
-https://github.com/helmfile/helmfile
+https://github.com/helmfile/helmfile - документация
 
-helmfile repos
-helmfile sync
+helmfile template  
+helmfile sync  
+helmfile apply  
+
+
+## Свой helm-чарт
+
+## helm-secrets
+
+## Kubecfg
+
+## kapitan (jsonnet)
+
+https://github.com/kapicorp/kapitan
