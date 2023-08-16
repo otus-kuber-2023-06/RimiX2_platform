@@ -291,7 +291,7 @@ helm ls -n chartmuseum
 kubectl get events -n chartmuseum --sort-by=.lastTimestamp
 ```
 
-### Работа с репозиторием chartmuseum производится через его API:
+### * Работа с репозиторием chartmuseum производится через его API:
 
 https://github.com/helm/chartmuseum - документация
 
@@ -331,7 +331,7 @@ helm show values harbor/harbor > harbor/values.yaml
 helm upgrade --install harbor harbor/harbor -f harbor/values.yaml --namespace=harbor --create-namespace 
 ```
 
-## Helmfile
+## * (Helmfile)
 
 https://github.com/helmfile/helmfile - документация
 
@@ -340,12 +340,19 @@ helmfile sync
 helmfile apply  
 
 
-## Свой helm-чарт
+## * Свой helm-чарт
 
+```
+helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespace hipster-shop --create-namespace
+```
+
+### * Дополнительное (chart dependencies)
 ## helm-secrets
 
-## Kubecfg
+## kubecfg
 
-## kapitan (jsonnet)
+## * kapitan (jsonnet)
 
 https://github.com/kapicorp/kapitan
+
+## kustomize
