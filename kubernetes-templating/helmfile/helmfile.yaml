@@ -24,7 +24,7 @@ releases:
       value: harbor.dev.ganiev.su
     - name: expose.ingress.className
       value: nginx
-    - name: expose.ingress.harbor.annotations.cert-manager\.io\/cluster-issuer
-      value: letsencrypt
+    - name: expose.ingress.harbor.annotations.cert-manager\.io\/issuer
+      value: letsencrypt-staging
     - name: externalURL
       value: https://harbor.dev.ganiev.su

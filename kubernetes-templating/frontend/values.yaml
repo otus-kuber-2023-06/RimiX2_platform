@@ -10,3 +10,5 @@ service:
 
 ingress:
     host: hipster-shop.dev.ganiev.su
+
+visibleKey: hiddenValue

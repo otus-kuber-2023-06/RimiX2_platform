@@ -26,7 +26,7 @@ appVersion: "1.16.0"
 dependencies:
 - name: frontend
   version: 0.1.0
-  repository: "file://../frontend"
+  repository: "@myrepo"
 - name: redis
   version: 17.15.4
   repository: "@bitnami"

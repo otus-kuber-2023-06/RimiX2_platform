@@ -253,7 +253,7 @@ helm upgrade --install cert-manager jetstack/cert-manager --wait --namespace=cer
 
 Установка необходимых для работы с Let's Encrypt ресурсов k8s для cert-manager (Issuer, ClusterIssuer):
 ```
-kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http=issuer.yaml
+kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http-issuer.yaml
 kubectl apply -f .\kubernetes-templating\cert-manager\le-acme-http-staging-issuer.yaml
 ```
 Теперь при заведении нового Ingress для автоматического получения и продления сертификата TLS от Let's Encrypt необходимо добавить аннотацию и секрет в метадату и спецификацию, как пример, для хоста test.dev.ganiev.su:
@@ -285,7 +285,7 @@ helm show values chartmuseum/chartmuseum > chartmuseum/values.yaml
 
 Установка чарта chartmuseum последней версии:
 ```
-helm upgrade --install chartmuseum chartmuseum/chartmuseum -f chartmuseum/values.yaml \
+helm upgrade --install chartmuseum chartmuseum/chartmuseum -f kubernetes-templating/chartmuseum/values.yaml \
 --namespace=chartmuseum --create-namespace --set persistence.enabled=true,env.open.DISABLE_API=false
 helm ls -n chartmuseum
 kubectl get events -n chartmuseum --sort-by=.lastTimestamp
@@ -328,22 +328,21 @@ helm show values harbor/harbor > harbor/values.yaml
 ```
 Установка harbor из чарта:
 ```
-helm upgrade --install harbor harbor/harbor -f harbor/values.yaml --namespace=harbor --create-namespace 
+helm upgrade --install harbor harbor/harbor -f kubernetes-templating/harbor/values.yaml --namespace=harbor --create-namespace 
 ```
 
 ## * (Helmfile)
 
 https://github.com/helmfile/helmfile - документация
 
-helmfile template  
+cd kubernetes-templating/helmfile/
 helmfile sync  
 helmfile apply  
-
+helmfile template  
 
 ## * Свой helm-чарт
 
-
-helm dep update kubernetes-templating/hipster-shop  
+helm dependency update kubernetes-templating/hipster-shop  
 ```
 helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespace hipster-shop --create-namespace
 ```
@@ -355,10 +354,50 @@ helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespa
 
 ## helm-secrets
 
-## kubecfg
+helm plugin install https://github.com/futuresimple/helm-secrets
+gpg --full-generate-key  
+gpg -k  
+sops -e -i --pgp 9DE1B26A51D0265C475529092FE6BC985112D9E1 kubernetes-templating/frontend/secrets.yaml 
+
+helm secrets upgrade --install frontend kubernetes-templating/frontend --namespace hipster-shop -f kubernetes-templating/frontend/values.yaml -f kubernetes-templating/frontend/secrets.yaml
+
+sops -d -i --pgp 9DE1B26A51D0265C475529092FE6BC985112D9E1 ../../frontend/secrets.yaml
+
+helm repo add myrepo https://chartmuseum.dev.ganiev.su 
+helm package kubernetes-templating/frontend  
+curl -X POST --data-binary "@frontend-0.1.0.tgz" https://chartmuseum.dev.ganiev.su/api/charts 
+helm dependency update kubernetes-templating/hipster-shop  
+
+## kubecfg (jsonnet)
+
+helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespace  
+
+go install github.com/kubecfg/kubecfg@latest
+
+Библиотке libsonnet:
+ - https://github.com/kube-libsonnet/kube-libsonnet
+ - https://github.com/jsonnet-libs/k8s-libsonnet/1.26 https://medium.com/@pmspraveen8/k8s-libsonnet-generating-manifests-33a5e5aff277
+
+Установка json-bundler (jb) для последующей установки библиотек libsonnet
+```
+go install -a github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
+```
+cd jsonnet
+jb init  
+
+Установка библиотеки для описания манифестов k8s
+```
+jb install github.com/jsonnet-libs/k8s-libsonnet/1.26@main
+```
+
+kubecfg show services.jsonnet
+kubecfg update services.jsonnet --namespace hipster-shop
 
 ## * kapitan (jsonnet)
 
 https://github.com/kapicorp/kapitan
+https://medium.com/kapitan-blog/kubernetes-with-jsonnet-and-kapitan-5e3991d5bca
+
+pip3 install --user --upgrade kapitan
 
 ## kustomize
