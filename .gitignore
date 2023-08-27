@@ -1,2 +1,5 @@
-vendor
+*.tgz
+vendor/
 jsonnetfile.json
+compiled/
+**/jsonnet/lib/

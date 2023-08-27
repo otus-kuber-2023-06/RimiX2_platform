@@ -370,6 +370,9 @@ helm dependency update kubernetes-templating/hipster-shop
 
 ## kubecfg (jsonnet)
 
+paymentservice
+shippingservice
+
 helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespace  
 
 go install github.com/kubecfg/kubecfg@latest
@@ -378,25 +381,47 @@ go install github.com/kubecfg/kubecfg@latest
  - https://github.com/kube-libsonnet/kube-libsonnet (former bitnami project)
  - https://github.com/jsonnet-libs/k8s-libsonnet
 
-Установка json-bundler (jb) для последующей установки библиотек libsonnet
+Можно подключить библоитеки несколькими способами, все они предполагаю копирование необходимых файлов
+и указание пути до них в импорте шаблона.
+
+Вариант 1: Установка json-bundler (jb) и последующая установка библиотеки libsonnet
 ```
 go install -a github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
-```
-
-Установка библиотеки для описания манифестов k8s
-```
 jb init  
 jb install github.com/kube-libsonnet/kube-libsonnet
 ```
+
+Вариант 2: Получение архива из github и его распаковка:
+```
+wget https://github.com/kube-libsonnet/kube-libsonnet/archive/refs/heads/master.zip -O temp.zip
+unzip temp.zip
+rm temp.zip
+```
+
+Вариант 3: Использование GIT-подмодуля:
+```
+git submodule add https://github.com/kube-libsonnet/kube-libsonnet 
+```
+
+Использован вариант 1:
+
 
 kubecfg validate services2.jsonnet
 kubecfg update services2.jsonnet --namespace hipster-shop
 
 ## * kapitan (jsonnet)
 
-https://github.com/kapicorp/kapitan
-https://medium.com/kapitan-blog/kubernetes-with-jsonnet-and-kapitan-5e3991d5bca
+cartservice
+helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespace  
 
-pip3 install --user --upgrade kapitan
+
+kapitan init
+
+
+kapitan compile
+compiled/cartservice/scripts/apply.sh
 
 ## kustomize
+
+productcatalogservice
+helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespace  
