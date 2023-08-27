@@ -1,4 +1,4 @@
-# 5 (kubernetes-templating) - minikube (k8s 1.21.14)
+# 6 (kubernetes-templating) - minikube (k8s 1.21.14)
 
 ## Nginx Ingress 
 
