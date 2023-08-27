@@ -373,7 +373,7 @@ helm dependency update kubernetes-templating/hipster-shop
 paymentservice
 shippingservice
 
-helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespace  
+helm upgrade --install hipster-shop ..\hipster-shop --namespace hipster-shop --create-namespace  
 
 go install github.com/kubecfg/kubecfg@latest
 
@@ -412,7 +412,7 @@ kubecfg update services2.jsonnet --namespace hipster-shop
 ## * kapitan (jsonnet)
 
 cartservice
-helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespace  
+helm upgrade --install hipster-shop ..\hipster-shop --namespace hipster-shop --create-namespace  
 
 
 kapitan init
@@ -423,5 +423,12 @@ compiled/cartservice/scripts/apply.sh
 
 ## kustomize
 
+
 productcatalogservice
-helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespace  
+helm upgrade --install hipster-shop ..\hipster-shop --namespace hipster-shop --create-namespace
+
+kubectl kustomize overlays/test
+
+kubectl apply -k base
+kubectl create namespace hipster-shop-test
+kubectl apply -k overlays/test
