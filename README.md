@@ -363,7 +363,7 @@ helm secrets upgrade --install frontend kubernetes-templating/frontend --namespa
 
 sops -d -i --pgp 9DE1B26A51D0265C475529092FE6BC985112D9E1 ../../frontend/secrets.yaml
 
-helm repo add myrepo https://chartmuseum.dev.ganiev.su 
+`repo.sh` - helm repo add myrepo https://chartmuseum.dev.ganiev.su 
 helm package kubernetes-templating/frontend  
 curl -X POST --data-binary "@frontend-0.1.0.tgz" https://chartmuseum.dev.ganiev.su/api/charts 
 helm dependency update kubernetes-templating/hipster-shop  
@@ -374,24 +374,23 @@ helm upgrade --install hipster-shop . --namespace hipster-shop --create-namespac
 
 go install github.com/kubecfg/kubecfg@latest
 
-Библиотке libsonnet:
- - https://github.com/kube-libsonnet/kube-libsonnet
- - https://github.com/jsonnet-libs/k8s-libsonnet/1.26 https://medium.com/@pmspraveen8/k8s-libsonnet-generating-manifests-33a5e5aff277
+Библиотеки libsonnet для шаблонизации манифестов k8s:
+ - https://github.com/kube-libsonnet/kube-libsonnet (former bitnami project)
+ - https://github.com/jsonnet-libs/k8s-libsonnet
 
 Установка json-bundler (jb) для последующей установки библиотек libsonnet
 ```
 go install -a github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
 ```
-cd jsonnet
-jb init  
 
 Установка библиотеки для описания манифестов k8s
 ```
-jb install github.com/jsonnet-libs/k8s-libsonnet/1.26@main
+jb init  
+jb install github.com/kube-libsonnet/kube-libsonnet
 ```
 
-kubecfg show services.jsonnet
-kubecfg update services.jsonnet --namespace hipster-shop
+kubecfg validate services2.jsonnet
+kubecfg update services2.jsonnet --namespace hipster-shop
 
 ## * kapitan (jsonnet)
 

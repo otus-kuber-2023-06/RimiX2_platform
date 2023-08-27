@@ -1,4 +1,4 @@
-local k = import "vendor/github.com/kube-libsonnet/kube-libsonnet/kube.libsonnet";
+local k = import "https://github.com/bitnami-labs/kube-libsonnet/raw/52ba963ca44f7a4960aeae9ee0fbee44726e481f/kube.libsonnet";
 
 local common(name) = {
 

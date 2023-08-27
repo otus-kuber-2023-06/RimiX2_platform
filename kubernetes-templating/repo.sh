@@ -1,2 +1,2 @@
 #!/bin/sh
-helm repo add templating https://harbor.dev.ganiev.su
+helm repo add myrepo https://chartmuseum.dev.ganiev.su
