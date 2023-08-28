@@ -1,0 +1,8 @@
+classes:
+  - components.cartservice
+  - components.scripts
+  - components.kapitan
+  - components.kube
+
+parameters:
+  target: cartservice

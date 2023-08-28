@@ -1,0 +1,4 @@
+input-files:
+  - README.md
+  - kubernetes-templating/readme.md
+  # - file2.md

@@ -1,1 +1,6 @@
 __pycache__
+*.tgz
+vendor/
+jsonnetfile.json
+compiled/
+**/jsonnet/lib/

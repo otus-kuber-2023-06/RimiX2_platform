@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  name: static-site
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: test.dev.ganiev.su
+    http:
+      paths:
+      - backend:
+          service:
+            name: static-site
+            port:
+              number: 80
+        path: /static-site
+        pathType: Exact
+  tls:
+  - hosts:
+    - test.dev.ganiev.su
+    secretName: letsencrypt

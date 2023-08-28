@@ -1,0 +1,4 @@
+parameters:
+  kapitan:
+    scripts:
+      - components/scripts/apply.sh
