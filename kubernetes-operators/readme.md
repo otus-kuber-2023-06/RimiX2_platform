@@ -1,11 +1,14 @@
+#7 kubernetes-operators (kopf)
+
 https://cdn.otus.ru/media/public/66/db/Kubernetes_operators_HW-139042-66dbcd.pdf
 
-kind
+`kubernetes-operators/deploy/`
+`kubernetes-operators/build/`
 
-1) secrets
-2) status
+kubectl apply -f deploy/crd.yml
+kubectl apply -f deploy/cr.yml
 
-python3 -m kopf run mysql-operator.py --verbose
+kopf run mysql-operator.py --verbose
 
 export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
 kubectl exec -it $MYSQLPOD -- mysql -uroot -potuspassword -e "insert into test (name) values ('new 333')" otus-database
