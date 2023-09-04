@@ -1,0 +1,30 @@
+repositories:
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: harbor
+    url: https://helm.goharbor.io    
+
+helmfiles:
+  - path: helmfile-nested.yaml
+missingFileHandler: Error
+
+releases:
+  - name: cert-manager
+    # installed: false
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+  - name: harbor
+    namespace: harbor
+    # installed: false
+    chart: harbor/harbor
+    set:
+    - name: expose.tls.secret.secretName
+      value: harbor.dev.ganiev.su
+    - name: expose.ingress.hosts.core
+      value: harbor.dev.ganiev.su
+    - name: expose.ingress.className
+      value: nginx
+    - name: expose.ingress.harbor.annotations.cert-manager\.io\/issuer
+      value: letsencrypt-staging
+    - name: externalURL
+      value: https://harbor.dev.ganiev.su
