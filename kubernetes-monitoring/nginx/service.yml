@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+  labels:
+    app: nginx
+spec:
+  selector:
+    app: nginx
+  type: ClusterIP
+  ports:
+  - name: http-standart
+    protocol: TCP
+    port: 80
+    targetPort: http
+  - name: http-nonstandart
+    protocol: TCP
+    port: 8080
+    targetPort: exporter-port

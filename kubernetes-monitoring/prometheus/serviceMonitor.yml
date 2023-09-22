@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nginx-svc-monitor
+  labels:
+    app: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  endpoints:
+    - port: http-nonstandart
+      path: /metrics
+  # namespaceSelector:
+  #   matchNames:
+  #     - your-namespace
