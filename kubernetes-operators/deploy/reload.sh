@@ -7,5 +7,5 @@ kubectl delete job/backup-mysql-instance-job
 kubectl delete pvc/backup-mysql-instance-pvc
 kubectl delete pv/backup-mysql-instance-pv
 kubectl delete deployment/mysql-operator
-kubectl delete -f ../deploy/cr.yml
-#kubectl apply -f ../deploy/cr.yml
+kubectl delete -f ../deploy/6-cr.yml
+#kubectl apply -f ../deploy/6-cr.yml
