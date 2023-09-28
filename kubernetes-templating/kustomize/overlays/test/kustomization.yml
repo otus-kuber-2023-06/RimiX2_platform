@@ -1,0 +1,18 @@
+resources:
+  - ../../base
+
+namespace: hipster-shop-test
+nameSuffix: -test
+
+patches: 
+  - path: patch_deployment_with_envs.json
+    target: 
+      group: apps
+      version: v1
+      kind: Deployment
+      name: productcatalogservice
+  - path: nodeport.yml
+
+configMapGenerator:
+  - name: productcatalogservice
+    env: envs.config

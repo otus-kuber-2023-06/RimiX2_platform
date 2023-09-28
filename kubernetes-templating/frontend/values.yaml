@@ -1,0 +1,14 @@
+pod:
+  imagetag: v0.1.3
+  replicas: 1
+
+service:
+  type: NodePort
+  port: 80
+  targetport: 8080
+  nodeport: 30080
+
+ingress:
+    host: hipster-shop.dev.ganiev.su
+
+visibleKey: hiddenValue

@@ -1,0 +1,7 @@
+*.tgz
+vendor/
+jsonnetfile.json
+compiled/
+**/jsonnet/lib/
+**/venv/
+**/__pycache__

@@ -1,0 +1,9 @@
+dependencies:
+- name: frontend
+  repository: https://chartmuseum.dev.ganiev.su
+  version: 0.1.0
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 17.15.4
+digest: sha256:8e5340611bfaefbb836f29b00efa0e854748040ac637402b5ee5a28ce2e24bf7
+generated: "2023-08-27T01:14:23.117889+05:00"
