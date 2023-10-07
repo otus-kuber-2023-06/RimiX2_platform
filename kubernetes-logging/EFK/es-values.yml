@@ -1,0 +1,37 @@
+roles:
+  - master
+  - data
+
+# Disable it to use your own elastic-credential Secret.
+secret:
+  enabled: true
+  password: "elastic" # generated randomly if not defined
+
+
+#role=infra
+nodeSelector:
+  role: infra
+#node-role=infra:NoSchedule
+tolerations:
+  - key: node-role
+    operator: Equal
+    value: infra
+    effect: NoSchedule
+
+# Enabling this will publicly expose your Elasticsearch instance.
+# Only enable this if you have security enabled on your cluster
+ingress:
+  enabled: true
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  className: "nginx"
+  pathtype: ImplementationSpecific
+  hosts:
+    - host: es-yc.dev.ganiev.su
+      paths:
+        - path: /
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
