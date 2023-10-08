@@ -1,6 +1,6 @@
-roles:
-  - master
-  - data
+# roles:
+#   - master
+#   - data
 
 # Disable it to use your own elastic-credential Secret.
 secret:
@@ -21,17 +21,27 @@ tolerations:
 # Enabling this will publicly expose your Elasticsearch instance.
 # Only enable this if you have security enabled on your cluster
 ingress:
-  enabled: true
+  enabled: false
   annotations: {}
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
-  className: "nginx"
-  pathtype: ImplementationSpecific
-  hosts:
-    - host: es-yc.dev.ganiev.su
-      paths:
-        - path: /
-  tls: []
+  # className: "nginx"
+  # pathtype: ImplementationSpecific
+  # hosts:
+  #   - host: es-yc.dev.ganiev.su
+  #     paths:
+  #       - path: /
+  # tls: []
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+resources:
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+
+sysctlVmMaxMapCount: 262144

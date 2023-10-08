@@ -193,13 +193,13 @@ readinessProbe:
     path: /api/v1/health
     port: http
 
-resources: {}
-#   limits:
-#     cpu: 100m
-#     memory: 128Mi
-#   requests:
-#     cpu: 100m
-#     memory: 128Mi
+resources: 
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
 
 ## only available if kind is Deployment
 ingress:
@@ -391,6 +391,11 @@ config:
         Keep_Log Off
         K8S-Logging.Parser On
         K8S-Logging.Exclude On
+        Labels Off
+    # [FILTER]
+    #     Name modify
+    #     Match kube.*
+    #     Rename kubernetes.labels.app kubernetes.labels._app
 
   ## https://docs.fluentbit.io/manual/pipeline/outputs
   outputs: |
@@ -400,6 +405,12 @@ config:
         Host elasticsearch-master
         Logstash_Format On
         Retry_Limit False
+        tls   On
+        tls.verify Off
+        HTTP_User elastic
+        HTTP_Passwd elastic
+        Suppress_Type_Name On
+        Trace_Error On 
 
     [OUTPUT]
         Name es
@@ -408,6 +419,12 @@ config:
         Logstash_Format On
         Logstash_Prefix node
         Retry_Limit False
+        tls On
+        tls.verify Off
+        HTTP_User elastic
+        HTTP_Passwd elastic
+        Suppress_Type_Name On
+        Trace_Error On
 
   ## https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/classic-mode/upstream-servers
   ## This configuration is deprecated, please use `extraFiles` instead.

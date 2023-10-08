@@ -23,3 +23,11 @@ tolerations:
     operator: Equal
     value: infra
     effect: NoSchedule
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "2Gi"
+  limits:
+    cpu: "500m"
+    memory: "2Gi"
