@@ -29,5 +29,17 @@ helm upgrade --install fluent-bit fluent/fluent-bit --namespace observe --values
 
 ## Ingress Controller
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/cloud/deploy.yaml
+helm show values ingress-nginx --repo https://kubernetes.github.io/ingress-nginx > ingress-nginx.values.yaml
+
+helm upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace ingress-nginx --create-namespace --values ingress-nginx.values.yaml
+
+## Prometheus Elasticsearch Exporter
+
+helm upgrade --install es-prom-exporter -n observe --repo https://prometheus-community.github.io/helm-charts prometheus-community/prometheus-elasticsearch-exporter
+
+## (*) Duplicate field '@timestamp'
+
+
 ## Grafana Loki
