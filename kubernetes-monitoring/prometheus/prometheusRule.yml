@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: example-prometheus-rule
+  labels:
+    app: nginx
+spec:
+  groups:
+    - name: example-alerts
+      rules:
+        - alert: HighErrorRate
+          expr: rate(http_requests_total{job="example-job", status="500"}[5m]) > 0.1
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: High error rate detected

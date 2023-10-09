@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus-ns-instance
+  labels:
+    app: nginx
+spec:
+  replicas: 2
+  resources:
+    requests:
+      memory: 400Mi
+  # ruleSelector:
+  #   matchLabels:
+  #     role: prometheus
+  #   matchExpressions:
+  #     - key: environment
+  #       operator: In
+  #       values:
+  #         - production
+  # alerting:
+  #   alertmanagers:
+  #     - name: example-alertmanager
+  #       namespace: monitoring
+  #       port: web
+  serviceMonitorSelector:
+    matchLabels:
+      app: nginx
+  # externalLabels:
+  #   team: frontend
