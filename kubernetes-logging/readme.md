@@ -37,7 +37,14 @@ helm upgrade --install ingress-nginx ingress-nginx \
 
 ## Prometheus Elasticsearch Exporter
 
-helm upgrade --install es-prom-exporter -n observe --repo https://prometheus-community.github.io/helm-charts prometheus-community/prometheus-elasticsearch-exporter
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+helm show values prometheus-community/kube-prometheus-stack > prom-stack.values.yaml
+helm upgrade --install prom-operator prometheus-community/kube-prometheus-stack --namespace observe --values prom-stack.values.yaml
+
+helm show values prometheus-community/prometheus-elasticsearch-exporter > es-prom-exporter.values.yaml
+helm upgrade --install es-prom-exporter prometheus-community/prometheus-elasticsearch-exporter --namespace observe --values es-prom-exporter.values.yaml
 
 ## (*) Duplicate field '@timestamp'
 
