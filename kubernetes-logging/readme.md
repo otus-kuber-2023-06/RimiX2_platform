@@ -19,7 +19,7 @@ helm repo add fluent https://fluent.github.io/helm-charts
 
 kubectl create ns observe
 
-helm show values elastic/elastic > EFK/es-values.yml
+helm show values elastic/elasticsearch > EFK/es-values.yml
 helm upgrade --install elasticsearch elastic/elasticsearch --namespace observe --values elasticsearch.values.yaml
 kubectl get secret elasticsearch-master-credentials -o=jsonpath='{.data.password}' -n observe | base64 --decode
 helm show values elastic/kibana > EFK/kibana-values.yml
