@@ -58,14 +58,9 @@ resources: {}
 
 priorityClassName: ""
 
-nodeSelector:
-  role: infra
+nodeSelector: {}
 
-tolerations:
-  - key: node-role
-    operator: Equal
-    value: infra
-    effect: NoSchedule
+tolerations: []
 
 podAnnotations: {}
 
@@ -257,24 +252,25 @@ prometheusRule:
   ## https://github.com/coreos/prometheus-operator
   ##
   ## The rules will be processed as Helm template, allowing to set variables in them.
-  enabled: false
+  enabled: true
   #  namespace: monitoring
-  labels: {}
-  rules: []
+  labels:
+    release: prom-operator
+  rules:
     # - record: elasticsearch_filesystem_data_used_percent
     #   expr: |
     #     100 * (elasticsearch_filesystem_data_size_bytes{service="{{ template "elasticsearch-exporter.fullname" . }}"} - elasticsearch_filesystem_data_free_bytes{service="{{ template "elasticsearch-exporter.fullname" . }}"})
     #     / elasticsearch_filesystem_data_size_bytes{service="{{ template "elasticsearch-exporter.fullname" . }}"}
     # - record: elasticsearch_filesystem_data_free_percent
     #   expr: 100 - elasticsearch_filesystem_data_used_percent{service="{{ template "elasticsearch-exporter.fullname" . }}"}
-    # - alert: ElasticsearchTooFewNodesRunning
-    #   expr: elasticsearch_cluster_health_number_of_nodes{service="{{ template "elasticsearch-exporter.fullname" . }}"} < 3
-    #   for: 5m
-    #   labels:
-    #     severity: critical
-    #   annotations:
-    #     description: There are only {{ "{{ $value }}" }} < 3 ElasticSearch nodes running
-    #     summary: ElasticSearch running on less than 3 nodes
+    - alert: ElasticsearchTooFewNodesRunning
+      expr: elasticsearch_cluster_health_number_of_nodes{service="{{ template "elasticsearch-exporter.fullname" . }}"} < 3
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        description: There are only {{ "{{ $value }}" }} < 3 ElasticSearch nodes running
+        summary: ElasticSearch running on less than 3 nodes
     # - alert: ElasticsearchHeapTooHigh
     #   expr: |
     #     elasticsearch_jvm_memory_used_bytes{service="{{ template "elasticsearch-exporter.fullname" . }}", area="heap"} / elasticsearch_jvm_memory_max_bytes{service="{{ template "elasticsearch-exporter.fullname" . }}", area="heap"}
