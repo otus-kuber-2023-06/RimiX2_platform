@@ -222,13 +222,37 @@ curl -XPOST --data '{"bar": "baz"}' --header "X-Vault-Token:$ACCESS_TOKEN" $VAUL
 
 Поэтому чтобы произвести обновление секрета (перезапись) в "otus/otus-rw/config", нужно добавить в полититку для "otus/otus-rw/" право "update".
 
-## Использование VAULT_AGENT
-`git clone https://github.com/hashicorp/vault-guides.git`
-`git checkout `
-cd vault-guides/identity/vault-agent-k8s-demo
+## Использование агента Vault
+`git clone https://github.com/hashicorp/vault-guides.git` - официальный репозиторий с примерами использования 
+`cd vault-guides/identity/vault-agent-k8s-demo && git checkout 65114fb9507a447d4c7ef4a533328d452b77177f` - пример с Vault Agent/Consul Template/Nginx  
 
+В примере демонстрируется генерация страницы для Nginx с включенными в неё секретами из Vault.
+Контейнер vault в режиме autoauth выполняет login в сервер Vault, содержащим необходимые секреты. Сохраняет токен доступа в общий volume "vault-token" в оперативной памяти.
+Контейнер c consul-template, используя общий volume c полученным токеном доступа, получает необходимые для шаблона страницы секретные значения и сохраняет сгенерированную страницу в общий volume "shared-data" для Nginx на диск.
+Клиент обращается к контейнеру nginx за страницей и получает её вместе с секретными значениями.
+
+Копируем и подготавливаем следующие файлы:  
+`agent-usecase/configs-k8s/consul-template-config.hcl` - конфиг в формате "HashiCorp configuration language" для контейнера с **Consul Template**   
+`agent-usecase/configs-k8s/vault-agent-config.hcl` - конфиг для контейнера с **Vault**  
+`agent-usecase/example-k8s-spec.yml` - манифест тестового пода c контейнерами (vault/consul-template/nginx)  
+
+Cоздаём ConfigMap для тестового пода:  
+```
+kubectl create configmap example-vault-agent-config --from-file=./configs-k8s/
+kubectl get configmap example-vault-agent-config -o yaml
+```
+
+Создаем тестовый под:  
+`kubectl apply -f agent-usecase/example-k8s-spec.yml`  
 
 ---
-## Использование VAULT_PKI
----
-## Использование VAULT_DYNAMIC_SECRETS
+## Использование модуля PKI для создания CA
+
+
+## (*) Настройка TLS для сервера Vault
+
+
+## (*) Настройка autounseal
+Провайдер Vault Transit
+
+## (*) Использование динамических секретов для СУБД
