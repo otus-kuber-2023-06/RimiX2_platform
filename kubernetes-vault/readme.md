@@ -11,7 +11,9 @@ Consul используется как бэкенд хранения секре�
 `helm install consul hashicorp/consul --create-namespace -n consul --values consul/values.yml`
 `helm install vault hashicorp/vault --create-namespace -n vault --values vault/values.yml`  
 
-## Распечатывание (формирование секретного ключа для шифрования хранилища секретов)
+## Распечатывание (unseal)
+Инициализация сервера и мастер-ключа для формирования секретного ключа.
+Для простоты мастер-ключ делим (key-shares) всего на 1 часть и для распечатывания (key-threshold aka quorum) нужен 1. Обычно задают 7 частей и 3 любых из них для распечатывания.  
 `kubectl exec vault-0 -n vault -- vault operator init -key-shares=1 -key-threshold=1 -format=json`
 ```
 {
@@ -30,10 +32,10 @@ Consul используется как бэкенд хранения секре�
   "root_token": "hvs.mzJzjaW9sP6fWMBEIx6Vhuqi"
 }
 ```
-Следующие команды повторяем на всех нодах Vault (начинаем с vault-0)
+Формированиe секретного ключа (на котором шифруются секреты в бэкенде). Следующие команды повторяем на всех нодах Vault (начинаем с vault-0)
 
-- `kubectl exec -it vault-0 -n vault -- vault operator unseal` - вводим значение из **unseal_keys_b64**  
-- `kubectl exec vault-0 -n vault -- vault status`
+- `kubectl exec -it vault-0 -n vault -- vault operator unseal` - вводим значение из **unseal_keys_b64** или **unseal_keys_hex**  
+- `kubectl exec vault-0 -n vault -- vault status` - смотрим, чтобы значение "Sealed" стало "false"
 ```
 Key             Value
 ---             -----
@@ -81,7 +83,7 @@ token/    token    auth_token_34abe3f4    token based credentials    n/a
 ```
 
 ### Создание тестовых секретов
-`kubectl exec -it vault-0 -n vault -- vault secrets enable --path=otus kv`  - Включение модуля секретов типа kv (key-value)   
+`kubectl exec -it vault-0 -n vault -- vault secrets enable --path=otus kv`  - Включение модуля секретов типа KV (v1) (key-value) по пути "otus/*"
 `kubectl exec -it vault-0 -n vault -- vault secrets list` - Получение списка включенных на сервере модулей секретов
 ```
 Path          Type         Accessor              Description
@@ -265,13 +267,35 @@ root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
 ```
 
 ---
-## Использование модуля PKI для создания CA
+## Использование модуля PKI для создания Root/Intermediate/Leaf сертификатов
 
+`kubectl exec -it vault-0 -n vault -- vault secrets enable --path=pki-root pki` - включение модуля секретов типа PKI по пути "pki-root" для корневого СА  
+`kubectl exec -it vault-0 -n vault -- vault read sys/mounts/pki-root/tune` - просмотр текущих установок модуля
+`kubectl exec -it vault-0 -n vault -- vault secrets tune -max-lease-ttl=87600h pki-root` - установка максимального времени жизни токенов и секретов (сроков сертификатов) модуля
+
+`kubectl exec -it vault-0 -m vault -- vault write -field=certificate pki-root/root/generate/internal common_name="example-ca.ru" ttl=87600h > CA_cert.crt` - генерация самоподписанного корневого сертификата. Вывод содержит сгенерированный сертификат. Сам сертификат и его секретный ключ записывается в бэкенд  
 
 ## (*) Настройка TLS для сервера Vault
 
+Возможные способы:  
+1.  Обновление через helm-чарт переменной server.ha.config конфигрурации (в формате multiline HCL) и необходимых файлов (сертификата, ключа и сертификата СA в случае двустороннего TLS) в переменной server.volumes\volumeMounts
+2.  Обновление конфигрурации (в формате multiline HCL) в ConfigMap и создание секретов k8s с необходимыми файлами
+
+Блок в конфигурации, который настраивает одностороний TLS (на стороне сервера)
+
+```
+listener "tcp" {
+  address          = "127.0.0.1:8200"
+  tls_disable      = "false"
+  tls_cert_file = "./output/server-certs/vaultcert.pem"
+  tls_key_file  = "./output/server-certs/vault_key.pem"
+  tls_require_and_verify_client_cert="false"
+  # tls_client_ca_file="./output/client-certs/ca.pem"
+}
+```
 
 ## (*) Настройка autounseal
+
 Провайдер Vault Transit
 
 ## (*) Использование динамических секретов для СУБД
