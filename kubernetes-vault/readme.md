@@ -199,9 +199,9 @@ metadata:
 spec:
   serviceAccountName: testing-vault-sa
   containers:
-  - name: testing-vault
-    image: alpine
-    command: ["sh","-c","sleep infinity"]
+    - name: testing-vault
+      image: alpine
+      command: ["sh","-c","sleep infinity"]
 ```
 Внутри пода выполняем:
 ```
@@ -224,14 +224,16 @@ curl -XPOST --data '{"bar": "baz"}' --header "X-Vault-Token:$ACCESS_TOKEN" $VAUL
 
 ## Использование агента Vault
 `git clone https://github.com/hashicorp/vault-guides.git` - официальный репозиторий с примерами использования 
-`cd vault-guides/identity/vault-agent-k8s-demo && git checkout 65114fb9507a447d4c7ef4a533328d452b77177f` - пример с Vault Agent/Consul Template/Nginx  
+`cd vault-guides/identity/vault-agent-k8s-demo && git checkout 65114fb9507a447d4c7ef4a533328d452b77177f` - пример с Vault Agent/Consul Template/Nginx
 
 В примере демонстрируется генерация страницы для Nginx с включенными в неё секретами из Vault.
 Контейнер vault в режиме autoauth выполняет login в сервер Vault, содержащим необходимые секреты. Сохраняет токен доступа в общий volume "vault-token" в оперативной памяти.
 Контейнер c consul-template, используя общий volume c полученным токеном доступа, получает необходимые для шаблона страницы секретные значения и сохраняет сгенерированную страницу в общий volume "shared-data" для Nginx на диск.
 Клиент обращается к контейнеру nginx за страницей и получает её вместе с секретными значениями.
+#### Примечание:
+C версии 1.3 Vault позволяет обходиться без Consul-Template: добавлена поддержка темплейтирования на языке Consul Template markup.
 
-Копируем и подготавливаем следующие файлы:  
+Копируем из репозитория и подготавливаем следующие файлы:  
 `agent-usecase/configs-k8s/consul-template-config.hcl` - конфиг в формате "HashiCorp configuration language" для контейнера с **Consul Template**   
 `agent-usecase/configs-k8s/vault-agent-config.hcl` - конфиг для контейнера с **Vault**  
 `agent-usecase/example-k8s-spec.yml` - манифест тестового пода c контейнерами (vault/consul-template/nginx)  
@@ -243,7 +245,24 @@ kubectl get configmap example-vault-agent-config -o yaml
 ```
 
 Создаем тестовый под:  
-`kubectl apply -f agent-usecase/example-k8s-spec.yml`  
+```
+kubectl apply -f example-k8s-spec.yml
+```  
+
+Заходим в контейнер nginx и получаем содержимое сгенерированной страницы:
+```
+root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
+  <html>
+  <body>
+  <p>Some secrets:</p>
+  <ul>
+  <li><pre>username: otus</pre></li>
+  <li><pre>password: asajkjkahs</pre></li>
+  </ul>
+
+  </body>
+  </html>
+```
 
 ---
 ## Использование модуля PKI для создания CA

@@ -11,7 +11,7 @@ template {
   <html>
   <body>
   <p>Some secrets:</p>
-  {{- with secret "secret/otus/ro" }}
+  {{- with secret "otus/otus-ro/config" }}
   <ul>
   <li><pre>username: {{ .Data.username }}</pre></li>
   <li><pre>password: {{ .Data.password }}</pre></li>

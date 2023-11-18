@@ -29,7 +29,7 @@ spec:
   containers:
     # Vault container
     - name: vault-agent-auth
-      image: vault
+      image: vault:1.2.7
 
       volumeMounts:
         - name: vault-token
