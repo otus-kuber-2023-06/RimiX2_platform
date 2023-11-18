@@ -403,19 +403,16 @@ consul snapshot save /tmp/backup.snap
 
 ### Другой Vault c Transit
 
-Для простоты создадим однонодовый безкластерный Vault-сервер с файловым локальным бэкендом с помощью pod-манифеста:
+Для простоты создадим однонодовый безкластерный Vault-сервер с файловым локальным бэкендом с помощью pod-манифеста в dev-режиме:
 ```
 ```
 
-Зайдем в него, проинициализируем и распечатаем:
+Зайдем в него и включим модуль Transit и создадим необходимые ключ шифрования, политику и токен-доступа:
 ```
-vault operator init
-vault operator unseal
-```
-Включим модуль Transit и создадим необходимые ключ шифрования, политику и токен-доступа:
-```
+vault login
 vault secrets enable transit
 vault write -f transit/keys/autounseal
+
 vault policy write autounseal -<<EOF
 path "transit/encrypt/autounseal" {
    capabilities = [ "update" ]
@@ -425,32 +422,36 @@ path "transit/decrypt/autounseal" {
    capabilities = [ "update" ]
 }
 EOF
+
 vault token create -orphan -policy="autounseal" \
    -wrap-ttl=120 -period=24h \
    -field=wrapping_token
 ``` 
+Сохраним полученный токен доступа к Transit autounseal
+```
+hvs.CAESIDkeIQAFatxS0HusScjJAYTohTKUCUnygD7RavmMPPOAGh4KHGh2cy5aTjA1U1oxV0ZxV0Zaa3BDS3Q3SXM4d1k
+```
 Создадим service для доступа к нему с текущего кластера из манифеста:
 ```
-
 ```
 Сохраним адрес сервиса созданного сервера и токен доступа к Transit autounseal.
 
 ### Текущий Vault
 
-1. Отключаем сервер standby текущего кластера и добавляем в конфигурацию такой блок:
+1. Отключаем сервер standby текущего кластера и добавляем в ConfigMap "vault-config" c конфигурацией такой блок:
 ```
-seal "transit" {
-  address = "$VAULT_TRANSIT_ADDR"
-  token = "$VAULT_TRANSIT_TOKEN"
-  disable_renewal = "false"
-  key_name = "autounseal"
-  mount_path = "transit/"
-  # tls_skip_verify = "true"
-}
+    seal "transit" {
+      address = "$VAULT_TRANSIT_ADDR"
+      token = "$VAULT_TRANSIT_TOKEN"
+      disable_renewal = "false"
+      key_name = "autounseal"
+      mount_path = "transit/"
+      # tls_skip_verify = "true"
+    }
 ```
 2. Запускаем standby сервер и проводим команду, вводим текущий комплект частей мастер-ключа:
 ```
-vault operator unseal --migrate
+vault operator unseal -migrate
 ```
 3. Повторяем предыдущие шаги на всех остальных standby серверах
 

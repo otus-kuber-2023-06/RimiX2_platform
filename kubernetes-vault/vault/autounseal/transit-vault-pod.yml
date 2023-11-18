@@ -14,6 +14,8 @@ spec:
           add:
             - IPC_LOCK
       env:
+        - name: VAULT_ADDR
+          value: "http://localhost:8100"
         - name: VAULT_LOCAL_CONFIG
           value: |
-            {"storage": {"file": {"path": "/vault/file"}}, "listener": [{"tcp": { "address": "0.0.0.0:8200", "tls_disable": true}}], "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true}
+            {"storage": {"file": {"path": "/vault/file"}}, "listener": [{"tcp": { "address": "0.0.0.0:8100", "tls_disable": true}}], "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true}
