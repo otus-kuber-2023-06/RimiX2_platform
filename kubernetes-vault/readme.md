@@ -137,14 +137,18 @@ type: kubernetes.io/service-account-token
 ### Конфигурация
 
 После установки из Helm-чарта остался созданный ServiceAccount с именем "vault". 
-Он уже привязан к кластерной роли system:auth-delegator через ClusterRoleBinding "vault-server-binding", который тоже остался после установки. Нужно только создать недостающий секрет (см. Примечание).
+Он уже привязан к кластерной роли system:auth-delegator через ClusterRoleBinding "vault-server-binding", который тоже остался после установки. Нужно только создать недостающий секрет (см. Примечание), если вы не указали в переменной helm-чарта значение .
 ```
 apiVersion: v1
 kind: Secret
 metadata:
   name: vault-token
   namespace: vault
+  labels:
+    app.kubernetes.io/managed-by: Helm
   annotations:
+    meta.helm.sh/release-name: vault
+    meta.helm.sh/release-namespace: vault
     kubernetes.io/service-account.name: vault
 type: kubernetes.io/service-account-token
 ```
@@ -272,7 +276,7 @@ root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
 ### Корневой CA
 `kubectl exec -it vault-0 -n vault -- vault secrets enable --path=pki-root pki` - включение модуля секретов типа PKI по пути "pki-root" для корневого СА  
 `kubectl exec -it vault-0 -n vault -- vault read sys/mounts/pki-root/tune` - просмотр текущих установок модуля
-`kubectl exec -it vault-0 -n vault -- vault secrets tune -max-lease-ttl=87600h pki-root` - установка максимального времени жизни токенов и секретов (сроков сертификатов) модуля
+`kubectl exec -it vault-0 -n vault -- vault secrets tune -max-lease-ttl=87600h pki-root` - установка максимального времени жизни токенов и секретов (сроков сертификатов) модуля до 10 лет
 
 `kubectl exec -it vault-0 -m vault -- vault write -field=certificate pki-root/root/generate/internal common_name="example-ca.ru" ttl=87600h > root-cert.pem` - генерация самоподписанного корневого сертификата и создание издателя (issuer). Вывод не содержит (опция internal) приватный ключ сертификата, только сам сертификат, который сохраняется в локальный файл. Приватный ключ вместе с сертификатом безусловно записываются в бэкенд. 
 
@@ -285,12 +289,12 @@ root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
 `kubectl exec -it vault-0 -n vault -- vault write -format=json pki-int/intermediate/generate/internal common_name="example-ca.ru  Intermediate Authority" | jq -r '.data.csr' > pki-int.csr` - генерация запроса на сертификат с сохранением его в локальный файл
 
 `kubectl cp pki-int.csr -n vault vault-0:./tmp/` - копирование файла запроса на сервер  
-`kubectl exec -it vault-0 -n vault -- vault write -format=json pki-root/root/sign-intermediate csr=@/tmp/pki-int.csr format=pem_bundle ttl="43800h" | jq -r '.data.certificate' > intermediate_cert.pem` - подписание промежуточного сертификата корневым сертификатом по переданному запросу с сохранением полученного сертификата в локальный файл в формате PEM вместе с корневым
+`kubectl exec -it vault-0 -n vault -- vault write -format=json pki-root/root/sign-intermediate csr=@/tmp/pki-int.csr format=pem_bundle ttl="43800h" | jq -r '.data.certificate' > intermediate_cert.pem` - подписание промежуточного сертификата на 5 лет корневым сертификатом по переданному запросу с сохранением полученного сертификата в локальный файл в формате PEM вместе с корневым
 `kubectl cp intermediate_cert.pem -n vault vault-0:./tmp/` - копирование файла на сервер  
 `kubectl exec -it vault-0 -n vault -- vault write pki-int/intermediate/set-signed certificate=@/tmp/intermediate_cert.pem` - установка сертификата и создание издателя  
 `kubectl exec -it vault-0 -n vault -- vault write pki-int/config/urls issuing_certificates="http://vault.vault:8200/v1/pki-int/ca" crl_distribution_points="http://vault.vault:8200/v1/pki-int/crl"` - установка URL'ов до CA (сертификата в формате DER) и СRL (списка отзыва в формате DER), которые будут указываться в выпускаемых промежуточных сертификатах 
 
-`kubectl exec -it vault-0 -n vault -- vault write pki-int/roles/example-dot-ru allowed_domains="example.ru" allow_subdomains=true max_ttl="720h"` - создание роли для выпуска сертификата
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/roles/example-dot-ru allowed_domains="example.ru" allow_subdomains=true max_ttl="720h"` - создание роли "example-dot-ru" для выпуска сертификатов домена и субдоменов "example.ru"
 
 `kubectl exec -it vault-0 -n vault -- vault write pki-int/issue/example-dot-ru common_name="testing.example.ru" ttl="24h"` - выпуск сертификата под ролью example-dot-ru для домена 3-го уровня testing.example.ru со сроком 1 день
 ```
@@ -327,27 +331,120 @@ serial_number       74:4f:cb:2a:7c:91:6d:3a:d1:62:87:f6:24:50:6a:d7:a3:c0:09:35
 
 `kubectl exec -it vault-0 -n vault -- vault write pki-int/revoke serial_number="74:4f:cb:2a:7c:91:6d:3a:d1:62:87:f6:24:50:6a:d7:a3:c0:09:35"` - отзыв сертификата с определенным серийным номером  
 
-## (*) Настройка TLS для сервера Vault
+Проверка списка CRL промежуточного СA:
+```
+curl http://vault.vault:8200/v1/pki-int/crl --output crl.der
+openssl crl -inform DER -text -in crl.der
+```
 
-Возможные способы:  
-1.  Обновление через helm-чарт переменной server.ha.config конфигрурации (в формате multiline HCL) и необходимых файлов (сертификата, ключа и сертификата СA в случае двустороннего TLS) в переменной server.volumes\volumeMounts
-2.  Обновление конфигрурации (в формате multiline HCL) в ConfigMap и создание секретов k8s с необходимыми файлами
+## (*) Настройка одностороннего TLS для сервера Vault
 
-Блок в конфигурации, который настраивает одностороний TLS (на стороне сервера)
+Общие способы настройки TLS:
+- настройка Ingress с TLS (работает только для внешних обращений)
+- настройка слушателя непосредственно на самом сервере 
+
+Будем настраивать без использования Ingress, т.е. сам сервер.
+Для настройки сервера необходимо:
+- создать или получить где-то пару ассиметричных ключей - server.key и server.pem  
+- занести эти файлы на диск сервера, чтобы они были доступны ему локально
+- внести изменения в конфигурационный файл Vault'a
+- перезапустить сервер и распечатать сервер
+
+Параметры в блоке конфигурации, которые настраивают одностороний TLS:
 
 ```
+...
 listener "tcp" {
-  address          = "127.0.0.1:8200"
-  tls_disable      = 0
-  tls_cert_file = "./output/server-certs/vaultcert.pem"
-  tls_key_file  = "./output/server-certs/vault_key.pem"
-  tls_require_and_verify_client_cert="false"
-  # tls_client_ca_file="./output/client-certs/ca.pem"
+...
+  tls_disable = 0
+  tls_cert_file = "path/cert.pem"
+  tls_key_file  = "path/key.pem"
+  tls_require_and_verify_client_cert = 0
+  # tls_client_ca_file = "path/ca.pem"
+...
 }
+...
 ```
+Возможные способы для Vault'а, развернутого в кластере k8s:
+- обновление (или патч) действующих манифестов через kubectl (statefullset, configmap)
+- обновление релиза через helm с использованием переопределяемых переменных, предоставляемых чартом  (global.tlsDisable, server.volumes\volumeMounts и server.ha.config)
+
+Оба способа так или иначе требует наличия файлов (ключа и сертификата), заранее доступных в неймспейсе, в котором работает Vault-сервер. Поэтому создадим секреты с ними:
+```
+kubectl create secret tls -n vault test-tls --key="tls/key.pem" --cert="tls/server.pem"
+```
+
+Т.к. установка Vault был произведена через helm, будем обновлять релиз с новыми переопределяемыми переменными:
+```
+helm upgrade -n vault vault hashicorp/vault -f vault/tls/values.yml
+```
+Перезапуск серверов:
+```
+kubectl scale statefulsets vault -n vault --replicas=0
+kubectl scale statefulsets vault -n vault --replicas=3
+```
+
+При распечатывании и вообще работе с Vault CLI может понадобится ключ "-tls-skip-verify"
 
 ## (*) Настройка autounseal
 
+Vault позволяет автоматизировать распечатывание узлов. Для этого части ключей должны быть доступны на внешних "провайдерах".
+Это полезно в случае
+Процесс 
 Провайдер Vault Transit
 
 ## (*) Использование динамических секретов для СУБД
+
+Для начала необходимо создать роль "ro" на стороне СУБД с необходимыми правами:
+```
+CREATE ROLE ro NOINHERIT;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO "ro";
+```
+И включить модуль работы с различными СУБД:
+```
+vault secrets enable database
+```
+
+Настраиваем плагин работы с Postgresql для модуля. Создаем конфигурацию с именем "posgresql":
+```
+vault write database/config/postgresql \
+    plugin_name=postgresql-database-plugin \
+    connection_url="postgresql://{{username}}:{{password}}@192.168.0.4:5432/postgres?sslmode=disable" \
+    allowed_roles=readonly \
+    username="root" \
+    password="rootpassword"
+```
+Создаем sql-файл с запросами на создание учётной записи в СУБД. Значения в {{}} будут предоставления во время исполнения Vault'ом:
+```
+CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}' INHERIT;
+GRANT ro TO "{{name}}";
+```
+
+Создаем роль "readonly" в модуле:
+```
+vault write database/roles/readonly \
+    db_name=postgresql \
+    creation_statements=@readonly.sql \
+    default_ttl=1h \
+    max_ttl=24h
+```
+
+Политика для роли:
+```
+path "database/creds/readonly" {
+  capabilities = [ "read" ]
+}
+```
+Приложение, которое захочет получить временные реквизиты доступа к СУБД должно сначала успешно авторизоваться в Vault и, согласно
+созданной заранее для приложения политики ACL, получить секреты по пути "database/creds/readonly":
+```
+vault read database/creds/readonly
+Key                Value
+---                -----
+lease_id           database/creds/readonly/uOqsNxc3STmGcA4rcUHoIZfo
+lease_duration     1h
+lease_renewable    true
+password           htYIB3lE9C7pb1G-XR6w
+username           v-userpass-readonly-AoBUrODEGJOkL1NXK9M4-1700317224
+```
+`vault list sys/leases/lookup/database/creds/readonly` - просмотр выданных lease'ов доступа к СУБД для роли "readonly"
