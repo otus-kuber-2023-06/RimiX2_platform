@@ -269,11 +269,31 @@ root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
 ---
 ## Использование модуля PKI для создания Root/Intermediate/Leaf сертификатов
 
+### Корневой CA
 `kubectl exec -it vault-0 -n vault -- vault secrets enable --path=pki-root pki` - включение модуля секретов типа PKI по пути "pki-root" для корневого СА  
 `kubectl exec -it vault-0 -n vault -- vault read sys/mounts/pki-root/tune` - просмотр текущих установок модуля
 `kubectl exec -it vault-0 -n vault -- vault secrets tune -max-lease-ttl=87600h pki-root` - установка максимального времени жизни токенов и секретов (сроков сертификатов) модуля
 
-`kubectl exec -it vault-0 -m vault -- vault write -field=certificate pki-root/root/generate/internal common_name="example-ca.ru" ttl=87600h > CA_cert.crt` - генерация самоподписанного корневого сертификата. Вывод содержит сгенерированный сертификат. Сам сертификат и его секретный ключ записывается в бэкенд  
+`kubectl exec -it vault-0 -m vault -- vault write -field=certificate pki-root/root/generate/internal common_name="example-ca.ru" ttl=87600h > root_cert.pem` - генерация самоподписанного корневого сертификата. Вывод сертификата сохраняется в локальный файл. Также сертификат и его секретный ключ записываются в бэкенд безусловно. 
+
+`kubectl exec -it vault-0 -n vault -- vault write pki-root/config/urls issuing_certificates="http://vault.vault:8200/v1/pki-root/ca" crl_distribution_points="http://vault.vault:8200/v1/pki-root/crl"` - установка путей для CA и СRL
+
+### Промежуточный CA
+
+`kubectl exec -it vault-0 -n vault -- vault secrets enable --path=pki-int pki` - включение модуля секретов типа PKI по пути "pki-int" для промежуточного СА  
+`kubectl exec -it vault-0 -n vault -- vault secrets tune -max-lease-ttl=87600h pki-int` - установка максимального времени жизни токенов и секретов (сроков сертификатов) модуля  
+`kubectl exec -it vault-0 -n vault -- vault write -format=json pki-int/intermediate/generate/internal common_name="example-ca.ru  Intermediate Authority" | jq -r '.data.csr' > pki-int.csr` - генерация запроса на сертификат с сохранением его в локальный файл
+
+`kubectl cp pki-int.csr vault-0:./` - копирование файла запроса на сервер  
+`kubectl exec -it vault-0 -n vault -- vault write -format=json pki/root/sign-intermediate csr=@pki-int.csr  format=pem_bundle ttl="43800h" | jq -r '.data.certificate' > intermediate_cert.pem` - (подписание) генерация  сертификата по переданному запросу с сохранением его в локальный файл  
+`kubectl cp intermediate_cert.pem vault-0:./` - копирование файла сертификата на сервер  
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/intermediate/set-signed certificate=@intermediate_cert.pem` -  
+
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/roles/example-dot-ru allowed_domains="example.ru" allow_subdomains=true max_ttl="720h"` - создание роли для выпуска сертификата
+
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/issue/devlab-dot-ru common_name="gitlab.devlab.ru" ttl="24h"` - выпуск сертификата
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/revoke serial_number="71:a8:4f:4c:bd:74:c6:d8:ea:27:64:cb:53:ef:80:1a:6b:c8:be:e3"` - отзыв сертификата с определенным серийным номером
+
 
 ## (*) Настройка TLS для сервера Vault
 
@@ -286,7 +306,7 @@ root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
 ```
 listener "tcp" {
   address          = "127.0.0.1:8200"
-  tls_disable      = "false"
+  tls_disable      = 0
   tls_cert_file = "./output/server-certs/vaultcert.pem"
   tls_key_file  = "./output/server-certs/vault_key.pem"
   tls_require_and_verify_client_cert="false"
