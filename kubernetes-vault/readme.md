@@ -274,9 +274,9 @@ root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
 `kubectl exec -it vault-0 -n vault -- vault read sys/mounts/pki-root/tune` - просмотр текущих установок модуля
 `kubectl exec -it vault-0 -n vault -- vault secrets tune -max-lease-ttl=87600h pki-root` - установка максимального времени жизни токенов и секретов (сроков сертификатов) модуля
 
-`kubectl exec -it vault-0 -m vault -- vault write -field=certificate pki-root/root/generate/internal common_name="example-ca.ru" ttl=87600h > root_cert.pem` - генерация самоподписанного корневого сертификата. Вывод сертификата сохраняется в локальный файл. Также сертификат и его секретный ключ записываются в бэкенд безусловно. 
+`kubectl exec -it vault-0 -m vault -- vault write -field=certificate pki-root/root/generate/internal common_name="example-ca.ru" ttl=87600h > root-cert.pem` - генерация самоподписанного корневого сертификата и создание издателя (issuer). Вывод не содержит (опция internal) приватный ключ сертификата, только сам сертификат, который сохраняется в локальный файл. Приватный ключ вместе с сертификатом безусловно записываются в бэкенд. 
 
-`kubectl exec -it vault-0 -n vault -- vault write pki-root/config/urls issuing_certificates="http://vault.vault:8200/v1/pki-root/ca" crl_distribution_points="http://vault.vault:8200/v1/pki-root/crl"` - установка путей для CA и СRL
+`kubectl exec -it vault-0 -n vault -- vault write pki-root/config/urls issuing_certificates="http://vault.vault:8200/v1/pki-root/ca" crl_distribution_points="http://vault.vault:8200/v1/pki-root/crl"` - установка URL'ов до CA (сертификата в формате DER) и СRL (списка отзыва в формате DER), которые будут указываться в выпускаемых промежуточных сертификатах 
 
 ### Промежуточный CA
 
@@ -284,16 +284,48 @@ root@vault-agent-example:/# cat /usr/share/nginx/html/index.html
 `kubectl exec -it vault-0 -n vault -- vault secrets tune -max-lease-ttl=87600h pki-int` - установка максимального времени жизни токенов и секретов (сроков сертификатов) модуля  
 `kubectl exec -it vault-0 -n vault -- vault write -format=json pki-int/intermediate/generate/internal common_name="example-ca.ru  Intermediate Authority" | jq -r '.data.csr' > pki-int.csr` - генерация запроса на сертификат с сохранением его в локальный файл
 
-`kubectl cp pki-int.csr vault-0:./` - копирование файла запроса на сервер  
-`kubectl exec -it vault-0 -n vault -- vault write -format=json pki/root/sign-intermediate csr=@pki-int.csr  format=pem_bundle ttl="43800h" | jq -r '.data.certificate' > intermediate_cert.pem` - (подписание) генерация  сертификата по переданному запросу с сохранением его в локальный файл  
-`kubectl cp intermediate_cert.pem vault-0:./` - копирование файла сертификата на сервер  
-`kubectl exec -it vault-0 -n vault -- vault write pki-int/intermediate/set-signed certificate=@intermediate_cert.pem` -  
+`kubectl cp pki-int.csr -n vault vault-0:./tmp/` - копирование файла запроса на сервер  
+`kubectl exec -it vault-0 -n vault -- vault write -format=json pki-root/root/sign-intermediate csr=@/tmp/pki-int.csr format=pem_bundle ttl="43800h" | jq -r '.data.certificate' > intermediate_cert.pem` - подписание промежуточного сертификата корневым сертификатом по переданному запросу с сохранением полученного сертификата в локальный файл в формате PEM вместе с корневым
+`kubectl cp intermediate_cert.pem -n vault vault-0:./tmp/` - копирование файла на сервер  
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/intermediate/set-signed certificate=@/tmp/intermediate_cert.pem` - установка сертификата и создание издателя  
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/config/urls issuing_certificates="http://vault.vault:8200/v1/pki-int/ca" crl_distribution_points="http://vault.vault:8200/v1/pki-int/crl"` - установка URL'ов до CA (сертификата в формате DER) и СRL (списка отзыва в формате DER), которые будут указываться в выпускаемых промежуточных сертификатах 
 
 `kubectl exec -it vault-0 -n vault -- vault write pki-int/roles/example-dot-ru allowed_domains="example.ru" allow_subdomains=true max_ttl="720h"` - создание роли для выпуска сертификата
 
-`kubectl exec -it vault-0 -n vault -- vault write pki-int/issue/devlab-dot-ru common_name="gitlab.devlab.ru" ttl="24h"` - выпуск сертификата
-`kubectl exec -it vault-0 -n vault -- vault write pki-int/revoke serial_number="71:a8:4f:4c:bd:74:c6:d8:ea:27:64:cb:53:ef:80:1a:6b:c8:be:e3"` - отзыв сертификата с определенным серийным номером
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/issue/example-dot-ru common_name="testing.example.ru" ttl="24h"` - выпуск сертификата под ролью example-dot-ru для домена 3-го уровня testing.example.ru со сроком 1 день
+```
+Key                 Value
+---                 -----
+ca_chain            [-----BEGIN CERTIFICATE-----
+MIIDuTCCAqGgAwIBAgIUcZxD0IrG312D1A6fAuayW9U2OwMwDQYJKoZIhvcNAQEL
+...обрезано..
+yRv/8T3eaPuB1wONIEXf0JlYKbz9QGyrBVtybr4IE+BNvT5KSw4EkrAzvWVt
+-----END CERTIFICATE----- -----BEGIN CERTIFICATE-----
+MIIDOzCCAiOgAwIBAgIUKdl/ImJEFCG10HzHC5ovqlDMnsUwDQYJKoZIhvcNAQEL
+...обрезано..
+7CkYrU2Kkn3V/pZR3UR4
+-----END CERTIFICATE-----]
+certificate         -----BEGIN CERTIFICATE-----
+MIID6zCCAtOgAwIBAgIUdE/LKnyRbTrRYof2JFBq16PACTUwDQYJKoZIhvcNAQEL
+...обрезано..
+LGlDgZRoeRG4Y0Fg3ialvI5IgibXwrmZaKT3yTOoX83T/uazuJ4EhgqaTooDOBA=
+-----END CERTIFICATE-----
+expiration          1700395588
+issuing_ca          -----BEGIN CERTIFICATE-----
+MIIDuTCCAqGgAwIBAgIUcZxD0IrG312D1A6fAuayW9U2OwMwDQYJKoZIhvcNAQEL
+...обрезано..
+yRv/8T3eaPuB1wONIEXf0JlYKbz9QGyrBVtybr4IE+BNvT5KSw4EkrAzvWVt
+-----END CERTIFICATE-----
+private_key         -----BEGIN RSA PRIVATE KEY-----
+MIIEogIBAAKCAQEAmmd1GLq7EntH3AuxILGqResijK0u3An6fjrXd1W+9E/Kn0ch
+...обрезано..
+qDwJdYPkgicVJXBc79CqxEQA3NuEAISlxFMvbxAVUb+xZ3/IhQ4=
+-----END RSA PRIVATE KEY-----
+private_key_type    rsa
+serial_number       74:4f:cb:2a:7c:91:6d:3a:d1:62:87:f6:24:50:6a:d7:a3:c0:09:35
+```
 
+`kubectl exec -it vault-0 -n vault -- vault write pki-int/revoke serial_number="74:4f:cb:2a:7c:91:6d:3a:d1:62:87:f6:24:50:6a:d7:a3:c0:09:35"` - отзыв сертификата с определенным серийным номером  
 
 ## (*) Настройка TLS для сервера Vault
 
