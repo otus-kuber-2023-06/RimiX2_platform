@@ -383,8 +383,18 @@ helm upgrade -n vault vault hashicorp/vault -f vault/tls/values.yml
 kubectl scale statefulsets vault -n vault --replicas=0
 kubectl scale statefulsets vault -n vault --replicas=3
 ```
-
 При распечатывании и вообще работе с Vault CLI может понадобится ключ "-tls-skip-verify"
+
+Проверка Curl'ом:
+```
+curl -k https://vault.vault:8200
+
+<a href="/ui/">Temporary Redirect</a>.
+
+VAULT_ADDR=https://vault.vault:8200 && curl -k $VAULT_ADDR/v1/sys/health
+
+{"initialized":true,"sealed":false,"standby":true,"performance_standby":false,"replication_performance_mode":"disabled","replication_dr_mode":"disabled","server_time_utc":1700375071,"version":"1.15.1","cluster_name":"vault-cluster-244c5e9d","cluster_id":"e8a03d9b-34af-f8cf-7ec6-3c2c8ca3d314"}
+```
 
 ## (*) Настройка autounseal
 
