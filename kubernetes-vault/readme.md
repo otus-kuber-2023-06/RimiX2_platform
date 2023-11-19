@@ -405,6 +405,27 @@ consul snapshot save /tmp/backup.snap
 
 Для простоты создадим однонодовый безкластерный Vault-сервер с файловым локальным бэкендом с помощью pod-манифеста в dev-режиме:
 ```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: transit-vault
+  namespace: default
+  labels:
+    app: vault
+spec:
+  containers:
+    - name: transit-vault
+      image: hashicorp/vault
+      securityContext:
+        capabilities:
+          add:
+            - IPC_LOCK
+      env:
+        - name: VAULT_ADDR
+          value: "http://localhost:8100"
+        - name: VAULT_LOCAL_CONFIG
+          value: |
+            {"storage": {"file": {"path": "/vault/file"}}, "listener": [{"tcp": { "address": "0.0.0.0:8100", "tls_disable": true}}], "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true}
 ```
 
 Зайдем в него и включим модуль Transit и создадим необходимые ключ шифрования, политику и токен-доступа:
@@ -433,6 +454,17 @@ hvs.CAESIB69ikYjxfbvvaTcb0DGkqzS7EQ-ilF6lWOWkLeRhEPDGh4KHGh2cy4wTTk0ZGRONWRtT0VK
 ```
 Создадим service для доступа к нему с текущего кластера из манифеста:
 ```
+apiVersion: v1
+kind: Service
+metadata:
+  name: transit-vault
+spec:
+  selector:
+    app: vault
+  ports:
+    - protocol: TCP
+      port: 8100
+      targetPort: 8100
 ```
 Сохраним адрес сервиса созданного сервера и токен доступа к Transit autounseal.
 
