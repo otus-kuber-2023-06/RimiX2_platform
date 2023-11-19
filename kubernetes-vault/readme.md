@@ -424,12 +424,12 @@ path "transit/decrypt/autounseal" {
 EOF
 
 vault token create -orphan -policy="autounseal" \
-   -wrap-ttl=120 -period=24h \
+   -period=24h \
    -field=wrapping_token
 ``` 
 Сохраним полученный токен доступа к Transit autounseal
 ```
-hvs.CAESIDkeIQAFatxS0HusScjJAYTohTKUCUnygD7RavmMPPOAGh4KHGh2cy5aTjA1U1oxV0ZxV0Zaa3BDS3Q3SXM4d1k
+hvs.CAESIB69ikYjxfbvvaTcb0DGkqzS7EQ-ilF6lWOWkLeRhEPDGh4KHGh2cy4wTTk0ZGRONWRtT0VKU202T0JFa0FPc1I
 ```
 Создадим service для доступа к нему с текущего кластера из манифеста:
 ```
@@ -451,17 +451,15 @@ hvs.CAESIDkeIQAFatxS0HusScjJAYTohTKUCUnygD7RavmMPPOAGh4KHGh2cy5aTjA1U1oxV0ZxV0Za
 ```
 2. Запускаем standby сервер и проводим команду, вводим текущий комплект частей мастер-ключа:
 ```
-vault operator unseal -migrate
+vault operator unseal -migrate --tls-skip-verify
 ```
 3. Повторяем предыдущие шаги на всех остальных standby серверах
 
 4. Переводим в standby активный сервер с помощью команды:
 ```
-vault operator step-down
+vault operator step-down --tls-skip-verify
 ```
 В результате чего будет выбран новый активный сервер, который начнет миграцию.  
-
-5. Выключаем его и также добавляем в конфигурацию блок "seal"
 
 ## (*) Использование динамических секретов для СУБД
 
