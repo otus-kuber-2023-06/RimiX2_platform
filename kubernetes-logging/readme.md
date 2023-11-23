@@ -1,4 +1,4 @@
-#9 
+#9 Logging
 
 ## Infra
 
@@ -10,6 +10,7 @@ kubectl label nodes -l [4] role=workload
 
 k create ns demo
 wget https://raw.githubusercontent.com/express42/otus-platform-snippets/master/Module-02/Logging/microservices-demo-without-resources.yaml
+kubectl apply -f microservices-demo-without-resources.yaml -n demo
 
 
 ## Elastic Stack (fluent bit)
@@ -31,9 +32,7 @@ helm upgrade --install fluent-bit fluent/fluent-bit --namespace observe --values
 
 helm show values ingress-nginx --repo https://kubernetes.github.io/ingress-nginx > ingress-nginx.values.yaml
 
-helm upgrade --install ingress-nginx ingress-nginx \
-  --repo https://kubernetes.github.io/ingress-nginx \
-  --namespace ingress-nginx --create-namespace --values ingress-nginx.values.yaml
+helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --values ingress-nginx.values.yaml
 
 ## Prometheus Elasticsearch Exporter
 
@@ -50,3 +49,9 @@ helm upgrade --install es-prom-exporter prometheus-community/prometheus-elastics
 
 
 ## Grafana Loki
+
+  helm repo add grafana https://grafana.github.io/helm-charts
+  helm repo update
+  helm install grafana grafana/grafana
+
+helm install loki bitnami/grafana-loki -n observe -f loki.values.yaml

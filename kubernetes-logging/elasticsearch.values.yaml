@@ -38,10 +38,15 @@ ingress:
 
 resources:
   requests:
-    cpu: "1"
-    memory: "2Gi"
+    cpu: "1000m"
+    memory: "2000Mi"
   limits:
-    cpu: "1"
-    memory: "2Gi"
+    cpu: "1000m"
+    memory: "2000Mi"
 
 sysctlVmMaxMapCount: 262144
+
+volumeClaimTemplate:
+  resources:
+    requests:
+      storage: 5Gi
