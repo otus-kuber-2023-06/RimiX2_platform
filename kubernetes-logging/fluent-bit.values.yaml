@@ -378,9 +378,15 @@ config:
 
     [INPUT]
         Name systemd
-        Tag host.*
+        Tag host.kubelet
         Systemd_Filter _SYSTEMD_UNIT=kubelet.service
         Read_From_Tail On
+
+    [INPUT]
+        Name tail
+        Path /var/log/*.log
+        Tag host.logs
+        Path_key path
 
   ## https://docs.fluentbit.io/manual/pipeline/filters
   filters: |
@@ -396,6 +402,10 @@ config:
     #     Name modify
     #     Match kube.*
     #     Rename kubernetes.labels.app kubernetes.labels._app
+    [FILTER]
+        Name record_modifier
+        Match host.logs
+        Record host ${HOSTNAME}
 
   ## https://docs.fluentbit.io/manual/pipeline/outputs
   outputs: |
