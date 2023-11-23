@@ -66,7 +66,7 @@ helm upgrade --install es-prom-exporter prometheus-community/prometheus-elastics
 
 ## (*) Duplicate field '@timestamp'
 
-???
+В моем случае не возникло такой проблемы. Как вариант, не указанный в методическом материале к ДЗ можно предложить убрать парсинг поля со временем, закомментировав и не в принципе не использовав директиву Time_Key в блоке [INPUT]
 
 ## Grafana Loki
 ```
