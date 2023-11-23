@@ -697,7 +697,8 @@ controller:
       # nodePort: ""
     serviceMonitor:
       enabled: true
-      additionalLabels: {}
+      additionalLabels:
+        release: prom-operator
       ## The label to use to retrieve the job name from.
       ## jobLabel: "app.kubernetes.io/name"
       namespace: ""

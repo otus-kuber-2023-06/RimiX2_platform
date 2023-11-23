@@ -48,10 +48,19 @@ helm upgrade --install es-prom-exporter prometheus-community/prometheus-elastics
 ## (*) Duplicate field '@timestamp'
 
 
+
 ## Grafana Loki
 
-  helm repo add grafana https://grafana.github.io/helm-charts
-  helm repo update
-  helm install grafana grafana/grafana
-
 helm install loki bitnami/grafana-loki -n observe -f loki.values.yaml
+
+## K8s Event Logger
+
+helm repo add deliveryhero https://charts.deliveryhero.io/
+helm install event-logger deliveryhero/k8s-event-logger -n observe
+
+## (*) Audit K8s logs
+
+
+
+## (*) Host logs
+
