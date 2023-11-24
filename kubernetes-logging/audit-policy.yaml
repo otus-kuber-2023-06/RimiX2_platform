@@ -1,0 +1,15 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  - level: Metadata
+    verbs: ["create"]
+    resources:
+      - group: "apps"
+        resources: ["deployments"]
+      - group: ""  # core
+        resources: ["pods", "replicacontrollers", "container", "serviceaccount"]
+  - level: RequestResponse
+    verbs: ["get"]
+    resources:
+      - group: "" # core
+        resources: ["configmaps"]
