@@ -7,7 +7,9 @@
 Находясь в бесконечно цикле, он, по сути, приводит состояние контролируемых объектов к желаемому (описанному в спецификации).
 
 Создадим оператор для установки сервера Mysql определенной версии в кластере вместе с определяемым размером диска для него и сетевого сервиса для обращения к нему. 
-При удалении экземлпяра ресурса оператор будет создавать резервную копию БД, а также восстанавливать сервер с неё при повторном создании экземлпяра ресурса.
+При удалении экземлпяра сервера оператор будет создавать резервную копию БД, а также восстанавливать БД с неё при повторном создании экземлпяра.
+
+Кластер должен быть однонодовый, т.к. PVC (PersistenceVolumeClaim) будет использоваться типа "hostPath".
 
 https://cdn.otus.ru/media/public/66/db/Kubernetes_operators_HW-139042-66dbcd.pdf
 
@@ -16,21 +18,18 @@ https://cdn.otus.ru/media/public/66/db/Kubernetes_operators_HW-139042-66dbcd.pdf
 
 Внесем в API-сервер новый тип ресурса "MySQL", который будет обрабатывать контроллер c помощью его описания (CRD):
 ```
-# kubectl apply -f deploy/0-crd.yml
+# kubectl apply -f deploy/crd.yml
 customresourcedefinition.apiextensions.k8s.io/mysqls.otus.homework created
 ```
 
 ## Код контроллера
 
-Необходимые условия для работы контроллера:
-- Динамическое выделение PV
-- Поддержка увеличения размера у default StorageClass (allowVolumeExpansion: true)
-
-### Подготовка
+Подготовка окружения:
 ```
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# cd build
+# python -m venv venv
+# source venv/bin/activate
+# pip install -r requirements.txt
 ```
 
 Контроллер будет обрабатывать два типа событий:
@@ -46,72 +45,86 @@ pip install -r requirements.txt
 
 `kubernetes-operators/build/mysql-operator.py` - код контроллера с использованием фреймфорка kopf
 
-Запускаем контроллера локально (с подключением к API-серверу текущего контекста kubeconfig):
+Запускаем контроллер локально (с подключением к API-серверу текущего контекста (из kubeconfig):
 ```
-kopf run mysql-operator.py --verbose
+# kopf run mysql-operator.py --verbose
 ```
 
-Создадим экземпляр ресурса типа "MySQL"
+Создадим экземпляр ресурса типа mysql:
 ```
-kubectl apply -f deploy/6-cr.yml
+# kubectl apply -f deploy/cr.yml
 ```
 
 Создадим тестовую таблицу в нем:
 ```
-export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
-kubectl exec -it $MYSQLPOD -- mysql -u root -potuspassword -e "CREATE TABLE test (id smallint unsigned not null auto_increment, name varchar(20) not null, constraint pk_example primary key (id) );" otus-database
+# export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
+# kubectl exec -it $MYSQLPOD -- mysql -u root -potuspassword -e "CREATE TABLE test (id smallint unsigned not null \ auto_increment, name varchar(20) not null, constraint pk_example primary key (id) );" otus-database
 ```
 
 Заполним её данными:
 ```
-kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "INSERT INTO test ( id, name) VALUES ( null, 'some data' );" otus-database
-kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "INSERT INTO test ( id, name ) VALUES ( null, 'some data-2' );" otus-database
+# kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "INSERT INTO test ( id, name) VALUES ( null, 'some data' );" otus-database
+# kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "INSERT INTO test ( id, name ) VALUES ( null, 'some data-2' );" otus-database
 ```
 
 ## Проверка восстановления БД из резервной копии
-export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
-kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "insert into test (name) values ('new 333')" otus-database
-kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test" otus-database
-kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otusdatabase
+```
+# export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
+# kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "insert into test (name) values ('new 333')" otus-database
+# kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test" otus-database
 
-kubectl delete mysqls.otus.homework mysql-instance
+# kubectl delete -f deploy/cr.yml
 
-export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
-kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otusdatabase
+# kubectl create -f deploy/cr.yml
 
-└── deploy
-    ├── cr.yml
-    ├── crd.yml
-    ├── deploy-operator.yml
-    ├── role-binding.yml
-    ├── role.yml
-    └── service-account.yml
+# export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
+# kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otus-database
+```
 
 ## Установка контроллера в кластер
 
-### Сборка образа
+### Сборка образа и отправка в реестр
+
+```
+# cd build
+# docker build -t ghcr.io/rimix2/mysqloperator:0.1.0 .
+# docker login ghcr.io
+# docker push ghcr.io/rimix2/mysqloperator:0.1.0
+```
 
 ### Установка необходимых манифестов для работы контроллера
 
 Добавим кластерную роль для работы оператора с правами на все действия с ресурсами необходимыми для работы оператора:
 ```
-# kubectl apply -f deploy/2-cluster-role.yml
+# kubectl apply -f deploy/role.yml
 ```
-Создадим сервисную учетную запись, под которой будет работать контроллер:
+Создадим сервисную учетную запись "mysql-operator-sa", под которой будет работать контроллер:
 ```
-# kubectl apply -f deploy/3-service-account.yml
+# kubectl apply -f deploy/service-account.yml
 ```
 Свяжем эту запись с созданной ранее ролью:
 ```
-# kubectl apply -f deploy/4-cluster-role-binding.yml
+# kubectl apply -f deploy/role-binding.yml
+```
+Разворачиваем контроллер:
+```
+# kubectl apply -f deploy/deploy-operator.yml
 ```
 
-## (*)  status subresource
+## (*)  Status subresource
 
 В код контроллера добавлен метод `update_status(body, msg)`, который обновляет поле в status subresource экземпляра mysql.  
 Это происходит после попытки восстановления из бэкапа. Результат исполнения этой задачи отражается в поле "status.message".
 
-## (*)  password changing
+```
+# kubectl describe mysqls/mysql-instance
+...
+Status:
+  Message:  Restoring DB have succeed
+...
+```
+
+## (*)  Password changing
 
 • Добавить в контроллер логику обработки изменений CR:  
     ◦ Например, реализовать смену пароля от MySQL, при изменении  
