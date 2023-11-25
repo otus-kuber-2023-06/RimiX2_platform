@@ -13,7 +13,7 @@ def render_template(filename, vars_dict):
     json_manifest = yaml.load(yaml_manifest, Loader=yaml.Loader)
     return json_manifest
 
-
+# Функция обновления поля в status subresource
 def update_status(body, msg):
     custom_api = kubernetes.client.CustomObjectsApi()
     update_payload = {"status": {"message": msg}}
@@ -76,14 +76,6 @@ def mysql_on_create(body, spec, **kwargs):
         logger.info(f"PV {name}-pv already exists. Deleting it ...")
         api_coreV1.delete_persistent_volume(f"{name}-pv")
 
-    # pv_list_1 = api.list_persistent_volume(field_selector = f'metadata.name={name}-pv')
-    # if len(pv_list_1.items)==1 :
-    #     logger.info(f"PV {name}-pv already exists. Deleting ...")
-    #     api.delete_persistent_volume(f"{name}-pv")
-
-    # # Создаем mysql PV:
-    # api_coreV1.create_persistent_volume(persistent_volume)
-
     try:
     #Создаем mysql PV:
         api_coreV1.create_persistent_volume(persistent_volume)
@@ -105,11 +97,14 @@ def mysql_on_create(body, spec, **kwargs):
     # Пытаемся восстановиться из backup
     try:
         api_batchV1 = kubernetes.client.BatchV1Api()
-        api_batchV1.create_namespaced_job(namespace, restore_job)
-        logger.info(f"The {name} is restoring from backup")
-        update_status(body,"tralalala")
+        job = api_batchV1.create_namespaced_job(namespace, restore_job)
+        logger.info(f"The {name} is trying to restore DB data from backup")
+        if  wait_until_job_end(job.metadata.name, namespace):
+            update_status(body,"Restoring DB have succeed")
+        else:
+            update_status(body,"Restoring DB have failed")
     except kubernetes.client.rest.ApiException:
-        pass
+        update_status(body,"Restoring DB have failed")
 
     # Cоздаем PVC и PV для бэкапов:
     try:
@@ -130,6 +125,7 @@ def delete_success_jobs(instance_name, namespace):
     jobs = api.list_namespaced_job(namespace)
     for job in jobs.items:
         jobname = job.metadata.name
+        print(jobname)
         if (jobname == f"backup-{instance_name}-job") or (
             jobname == f"restore-{instance_name}-job"
         ):
@@ -141,6 +137,7 @@ def delete_success_jobs(instance_name, namespace):
 def wait_until_job_end(jobname, namespace):
     api_batchV1 = kubernetes.client.BatchV1Api()
     job_finished = False
+    job_succeed = False
     jobs = api_batchV1.list_namespaced_job(namespace)
     while (not job_finished) and \
             any(job.metadata.name == jobname for job in jobs.items):
@@ -152,6 +149,8 @@ def wait_until_job_end(jobname, namespace):
                 if job.status.succeeded == 1:
                     logger.info(f"Job {jobname} completed")
                     job_finished = True
+                    job_succeed = True
+    return job_succeed
 
 @kopf.on.delete("otus.homework", "v1", "mysqls")
 def delete_object_make_backup(body, **kwargs):
@@ -161,8 +160,6 @@ def delete_object_make_backup(body, **kwargs):
     database = body["spec"]["database"]
     namespace = body["metadata"]["namespace"]
 
-    delete_success_jobs(name, namespace)
-
     # Cоздаем backup job:
     api_batchV1 = kubernetes.client.BatchV1Api()
     backup_job = render_template(
@@ -171,4 +168,12 @@ def delete_object_make_backup(body, **kwargs):
     )
     api_batchV1.create_namespaced_job(namespace, backup_job)
     wait_until_job_end(f"backup-{name}-job", namespace)
-    return {"message": "mysql and its children resources deleted"}
+
+    delete_success_jobs(name, namespace)
+
+
+
+@kopf.on.update("otus.homework", "v1", "mysqls")
+def react_on_updating(body):
+    pass
+    return "Root password changed"

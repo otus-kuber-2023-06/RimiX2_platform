@@ -108,15 +108,8 @@ kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otus
 
 ## (*)  status subresource
 
-• Исправить контроллер, чтобы он писал в status subresource
-• Описать изменения в README.md (показать код, объяснить, что он делает)
-• В README показать, что в status происходит запись
-• Например, при успешном создании mysql-instance, kubectl describe
-mysqls.otus.homework mysql-instance может показывать:
-    Status:
-    Kopf:
-    mysql_on_create:
-    Message: mysql-instance created without restore-job
+В код контроллера добавлен метод `update_status(body, msg)`, который обновляет поле в status subresource экземпляра mysql.  
+Это происходит после попытки восстановления из бэкапа. Результат исполнения этой задачи отражается в поле "status.message".
 
 ## (*)  password changing
 
