@@ -5,7 +5,6 @@ import time
 import logging as logger
 from jinja2 import Environment, FileSystemLoader
 
-
 def render_template(filename, vars_dict):
     env = Environment(loader=FileSystemLoader("./templates"))
     template = env.get_template(filename)
@@ -94,19 +93,28 @@ def mysql_on_create(body, spec, **kwargs):
     api_appsV1 = kubernetes.client.AppsV1Api()
     api_appsV1.create_namespaced_deployment(namespace, deployment)
 
-    # Пытаемся восстановиться из backup
-    try:
-        api_batchV1 = kubernetes.client.BatchV1Api()
-        job = api_batchV1.create_namespaced_job(namespace, restore_job)
-        logger.info(f"The {name} is trying to restore DB data from backup")
-        if  wait_until_job_end(job.metadata.name, namespace):
-            update_status(body,"Restoring DB have succeed")
-        else:
+    # Если есть бэкап,
+    if any(
+        pv.metadata.name == f"backup-{name}-pv"
+        for pv in api_coreV1.list_persistent_volume().items
+    ) and any(
+        pvc.metadata.name == f"backup-{name}-pvc"
+        for pvc in api_coreV1.list_persistent_volume_claim_for_all_namespaces().items
+       ):
+        logger.info("Backup exists")
+        # пытаемся восстановиться из backup
+        try:
+            api_batchV1 = kubernetes.client.BatchV1Api()
+            job = api_batchV1.create_namespaced_job(namespace, restore_job)
+            logger.info(f"The {name} is trying to restore DB data from backup")
+            if  wait_until_job_end(job.metadata.name, namespace):
+                update_status(body,"Restoring DB have succeed")
+            else:
+                update_status(body,"Restoring DB have failed")
+        except kubernetes.client.rest.ApiException:
             update_status(body,"Restoring DB have failed")
-    except kubernetes.client.rest.ApiException:
-        update_status(body,"Restoring DB have failed")
 
-    # Cоздаем PVC и PV для бэкапов:
+    # Cоздаем PVC и PV для будущего бэкапа (если они есть, пропускаем их создание):
     try:
         backup_pv = render_template("backup-pv.yml.j2", {"name": name})
         api_coreV1.create_persistent_volume(backup_pv)
@@ -117,7 +125,6 @@ def mysql_on_create(body, spec, **kwargs):
         api_coreV1.create_namespaced_persistent_volume_claim(namespace, backup_pvc)
     except kubernetes.client.exceptions.ApiException:
         pass
-
 
 def delete_success_jobs(instance_name, namespace):
     logger.info("Deleting success jobs ...")
