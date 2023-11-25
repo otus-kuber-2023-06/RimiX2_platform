@@ -127,8 +127,7 @@ Status:
 ## (*)  Password changing
 
 • Добавить в контроллер логику обработки изменений CR:  
-    ◦ Например, реализовать смену пароля от MySQL, при изменении  
-этого параметра в описании mysql-instance
-• В README:
-    ◦ Показать, что код работает
-    ◦ Объяснить, что он делает
+    ◦ Например, реализовать смену пароля от MySQL, при изменении этого параметра в описании mysql-instance
+
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
+mysqld --init-file=/home/me/mysql-init

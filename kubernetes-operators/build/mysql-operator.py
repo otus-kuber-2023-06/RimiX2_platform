@@ -1,4 +1,5 @@
 import kopf
+import json
 import yaml
 import kubernetes
 import time
@@ -91,7 +92,7 @@ def mysql_on_create(body, spec, **kwargs):
     api_coreV1.create_namespaced_service(namespace, service)
     # Создаем mysql Deployment:
     api_appsV1 = kubernetes.client.AppsV1Api()
-    api_appsV1.create_namespaced_deployment(namespace, deployment)
+    deploy = api_appsV1.create_namespaced_deployment(namespace, deployment)
 
     # Если есть бэкап,
     if any(
@@ -99,7 +100,7 @@ def mysql_on_create(body, spec, **kwargs):
         for pv in api_coreV1.list_persistent_volume().items
     ) and any(
         pvc.metadata.name == f"backup-{name}-pvc"
-        for pvc in api_coreV1.list_persistent_volume_claim_for_all_namespaces().items
+        for pvc in api_coreV1.list_namespaced_persistent_volume_claim(namespace).items
        ):
         logger.info("Backup exists")
         # пытаемся восстановиться из backup
@@ -125,6 +126,8 @@ def mysql_on_create(body, spec, **kwargs):
         api_coreV1.create_namespaced_persistent_volume_claim(namespace, backup_pvc)
     except kubernetes.client.exceptions.ApiException:
         pass
+    logger.info(f"MySQL instance created")
+    return {'deployment-name': deploy.metadata.name}
 
 def delete_success_jobs(instance_name, namespace):
     logger.info("Deleting success jobs ...")
@@ -178,9 +181,25 @@ def delete_object_make_backup(body, **kwargs):
 
     delete_success_jobs(name, namespace)
 
+# Меняем пароль суперпользователя на сервере
+@kopf.on.field("otus.homework", "v1", "mysqls", field='spec.password')
+def change_pswd(old, new, status, namespace, **kwargs):
 
+    dpl_name = status['mysql_on_create']['deployment-name']
+    api_appsV1 = kubernetes.client.AppsV1Api()
+    dpl = api_appsV1.read_namespaced_deployment(dpl_name, namespace)
+    # print(deployment)
 
-@kopf.on.update("otus.homework", "v1", "mysqls")
-def react_on_updating(body):
-    pass
-    return "Root password changed"
+    json_line = json.dumps(dpl.spec.selector.match_labels)
+    data = json.loads(json_line)
+    for key, value in data.items():
+        selector_str="{0}={1}".format(key, value)
+
+    api_coreV1 = kubernetes.client.CoreV1Api()
+    pods = api_coreV1.list_namespaced_pod(namespace,watch=False,label_selector=selector_str)
+    print(pods)
+
+    #update deployment
+    #exec mysql statment in pod
+
+    logger.info('Root password changed')
