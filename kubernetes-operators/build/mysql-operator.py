@@ -14,35 +14,24 @@ def render_template(filename, vars_dict):
     return json_manifest
 
 
-# @kopf.on.delete("pv")
-# def notify_pv_delete(body, spec, **kwargs):
-#     logger.info(f"Caught deleting PV {body['metadata']['name']} event")
-
-# @kopf.on.update('ms')
-# def resize_mysql_on_update(spec, metadata, **kwargs):
-#     logger.info(f"Caught updating MS {metadata['name']} event")
-#     new_size = spec.get('storage_size', None)
-#     if not new_size:
-#         raise kopf.PermanentError(f"Size must be set. Got {new_size!r}.")
-    
-#     namespace = metadata["namespace"]
-#     name = metadata["name"]
-#     pvc_patch = {'spec': {'resources': {'requests': {'storage': new_size}}}}
-
-#     api_coreV1 = kubernetes.client.CoreV1Api()
-#     obj = api_coreV1.patch_namespaced_persistent_volume_claim(
-#         namespace= namespace,
-#         name=name,
-#         body=pvc_patch,
-#     )
-
+def update_status(body, msg):
+    custom_api = kubernetes.client.CustomObjectsApi()
+    update_payload = {"status": {"message": msg}}
+    custom_api.patch_namespaced_custom_object_status(
+        group="otus.homework",
+        version="v1",
+        namespace=body["metadata"]["namespace"],
+        plural="mysqls",
+        name=body["metadata"]["name"],
+        body=update_payload,
+        )
 
 @kopf.on.create("otus.homework", "v1", "mysqls")
 # Функция, которая будет запускаться при создании объектов тип MySQL:
 def mysql_on_create(body, spec, **kwargs):
     # cохраняем в переменные содержимое описания MySQL из CR
     name = body["metadata"]["name"]
-    image = body["spec"]["image"]
+    image = spec["image"]
     password = body["spec"]["password"]
     database = body["spec"]["database"]
     storage_size = body["spec"]["storage_size"]
@@ -117,6 +106,8 @@ def mysql_on_create(body, spec, **kwargs):
     try:
         api_batchV1 = kubernetes.client.BatchV1Api()
         api_batchV1.create_namespaced_job(namespace, restore_job)
+        logger.info(f"The {name} is restoring from backup")
+        update_status(body,"tralalala")
     except kubernetes.client.rest.ApiException:
         pass
 
