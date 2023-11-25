@@ -45,7 +45,7 @@ pip install -r requirements.txt
 
 kubectl apply -f deploy/6-cr.yml
 
-Запуск контроллера локально (с подключением к кластеру):
+Запуск контроллера локально (с подключением к API-серверу текущего контекста kubeconfig):
 ```
 kopf run mysql-operator.py --verbose
 ```
@@ -55,11 +55,36 @@ kopf run mysql-operator.py --verbose
 kubectl apply -f deploy/6-cr.yml
 ```
 
+Создадим тестовую таблицу:
+```
+export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
+kubectl exec -it $MYSQLPOD -- mysql -u root -potuspassword -e "CREATE TABLE test (id smallint unsigned not null auto_increment, name varchar(20) not null, constraint pk_example primary key (id) );" otus-database
+```
+
+Заполним её данными:
+```
+kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "INSERT INTO test ( id, name) VALUES ( null, 'some data' );" otus-database
+kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "INSERT INTO test ( id, name ) VALUES ( null, 'some data-2' );" otus-database
+```
+
 ## Проверка восстановления БД из резервной копии
 export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
-kubectl exec -it $MYSQLPOD -- mysql -uroot -potuspassword -e "insert into test (name) values ('new 333')" otus-database
-kubectl exec -it $MYSQLPOD -- mysql -uroot -potuspassword -e "select * from test" otus-database
+kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "insert into test (name) values ('new 333')" otus-database
+kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test" otus-database
+kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otusdatabase
 
+kubectl delete mysqls.otus.homework mysql-instance
+
+export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
+kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otusdatabase
+
+└── deploy
+    ├── cr.yml
+    ├── crd.yml
+    ├── deploy-operator.yml
+    ├── role-binding.yml
+    ├── role.yml
+    └── service-account.yml
 
 ## Установка контроллера в кластер
 

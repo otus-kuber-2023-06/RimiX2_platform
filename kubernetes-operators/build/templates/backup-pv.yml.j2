@@ -5,11 +5,10 @@ metadata:
   labels:
     pv-usage: backup-{{ name }}
 spec:
-  storageClassName: ""
-  persistentVolumeReclaimPolicy: Retain
+  persistentVolumeReclaimPolicy: Delete
   accessModes:
     - ReadWriteOnce
   capacity:
     storage: 1Gi
   hostPath:
-    path: /data/pv-backup/
+    path: /tmp/data/pv-backup/

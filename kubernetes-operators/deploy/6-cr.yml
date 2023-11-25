@@ -3,7 +3,7 @@ kind: MySQL
 metadata:
   name: mysql-instance
 spec:
-  image: mysql:5.7
+  image: mysql:8.0.31
   database: otus-database
   password: otuspassword  # Так делать не нужно, следует использовать secret
   storage_size: 1Gi
