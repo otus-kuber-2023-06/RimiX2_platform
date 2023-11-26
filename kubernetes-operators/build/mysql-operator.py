@@ -2,9 +2,11 @@ import kopf
 import json
 import yaml
 import kubernetes
+from kubernetes.stream import stream
 import time
 import logging as logger
 from jinja2 import Environment, FileSystemLoader
+
 
 def render_template(filename, vars_dict):
     env = Environment(loader=FileSystemLoader("./templates"))
@@ -12,6 +14,7 @@ def render_template(filename, vars_dict):
     yaml_manifest = template.render(vars_dict)
     json_manifest = yaml.load(yaml_manifest, Loader=yaml.Loader)
     return json_manifest
+
 
 # Функция обновления поля в status subresource
 def update_status(body, msg):
@@ -24,7 +27,8 @@ def update_status(body, msg):
         plural="mysqls",
         name=body["metadata"]["name"],
         body=update_payload,
-        )
+    )
+
 
 @kopf.on.create("otus.homework", "v1", "mysqls")
 # Функция, которая будет запускаться при создании объектов тип MySQL:
@@ -49,12 +53,11 @@ def mysql_on_create(body, spec, **kwargs):
         "mysql-deployment.yml.j2",
         {"name": name, "image": image, "password": password, "database": database},
     )
-    restore_job = render_template('restore-job.yml.j2', {
-        'name': name,
-        'image': image,
-        'password': password,
-        'database': database})
-    
+    restore_job = render_template(
+        "restore-job.yml.j2",
+        {"name": name, "image": image, "password": password, "database": database},
+    )
+
     # kopf.adopt(persistent_volume)
     # kopf.adopt(persistent_volume_claim)
     # kopf.adopt(service)
@@ -77,7 +80,7 @@ def mysql_on_create(body, spec, **kwargs):
         api_coreV1.delete_persistent_volume(f"{name}-pv")
 
     try:
-    #Создаем mysql PV:
+        # Создаем mysql PV:
         api_coreV1.create_persistent_volume(persistent_volume)
     except kubernetes.client.exceptions.ApiException as e:
         if e.status == 409:
@@ -101,19 +104,19 @@ def mysql_on_create(body, spec, **kwargs):
     ) and any(
         pvc.metadata.name == f"backup-{name}-pvc"
         for pvc in api_coreV1.list_namespaced_persistent_volume_claim(namespace).items
-       ):
+    ):
         logger.info("Backup exists")
         # пытаемся восстановиться из backup
         try:
             api_batchV1 = kubernetes.client.BatchV1Api()
             job = api_batchV1.create_namespaced_job(namespace, restore_job)
             logger.info(f"The {name} is trying to restore DB data from backup")
-            if  wait_until_job_end(job.metadata.name, namespace):
-                update_status(body,"Restoring DB have succeed")
+            if wait_until_job_end(job.metadata.name, namespace):
+                update_status(body, "Restoring DB have succeed")
             else:
-                update_status(body,"Restoring DB have failed")
+                update_status(body, "Restoring DB have failed")
         except kubernetes.client.rest.ApiException:
-            update_status(body,"Restoring DB have failed")
+            update_status(body, "Restoring DB have failed")
 
     # Cоздаем PVC и PV для будущего бэкапа (если они есть, пропускаем их создание):
     try:
@@ -127,7 +130,8 @@ def mysql_on_create(body, spec, **kwargs):
     except kubernetes.client.exceptions.ApiException:
         pass
     logger.info(f"MySQL instance created")
-    return {'deployment-name': deploy.metadata.name}
+    return {"deployment-name": deploy.metadata.name}
+
 
 def delete_success_jobs(instance_name, namespace):
     logger.info("Deleting success jobs ...")
@@ -144,13 +148,15 @@ def delete_success_jobs(instance_name, namespace):
                     jobname, namespace, propagation_policy="Background"
                 )
 
+
 def wait_until_job_end(jobname, namespace):
     api_batchV1 = kubernetes.client.BatchV1Api()
     job_finished = False
     job_succeed = False
     jobs = api_batchV1.list_namespaced_job(namespace)
-    while (not job_finished) and \
-            any(job.metadata.name == jobname for job in jobs.items):
+    while (not job_finished) and any(
+        job.metadata.name == jobname for job in jobs.items
+    ):
         time.sleep(1)
         jobs = api_batchV1.list_namespaced_job(namespace)
         for job in jobs.items:
@@ -161,6 +167,7 @@ def wait_until_job_end(jobname, namespace):
                     job_finished = True
                     job_succeed = True
     return job_succeed
+
 
 @kopf.on.delete("otus.homework", "v1", "mysqls")
 def delete_object_make_backup(body, **kwargs):
@@ -181,11 +188,12 @@ def delete_object_make_backup(body, **kwargs):
 
     delete_success_jobs(name, namespace)
 
-# Меняем пароль суперпользователя на сервере
-@kopf.on.field("otus.homework", "v1", "mysqls", field='spec.password')
-def change_pswd(old, new, status, namespace, **kwargs):
 
-    dpl_name = status['mysql_on_create']['deployment-name']
+# Меняем пароль суперпользователя на сервере
+@kopf.on.field("otus.homework", "v1", "mysqls", field="spec.password")
+def change_rootpswd(old, new, status, namespace, **kwargs):
+    logger.info(f'Changed from "{old}" to "{new}"')
+    dpl_name = status["mysql_on_create"]["deployment-name"]
     api_appsV1 = kubernetes.client.AppsV1Api()
     dpl = api_appsV1.read_namespaced_deployment(dpl_name, namespace)
     # print(deployment)
@@ -193,13 +201,49 @@ def change_pswd(old, new, status, namespace, **kwargs):
     json_line = json.dumps(dpl.spec.selector.match_labels)
     data = json.loads(json_line)
     for key, value in data.items():
-        selector_str="{0}={1}".format(key, value)
+        selector_str = "{0}={1}".format(key, value)
 
     api_coreV1 = kubernetes.client.CoreV1Api()
-    pods = api_coreV1.list_namespaced_pod(namespace,watch=False,label_selector=selector_str)
-    print(pods)
+    pods = api_coreV1.list_namespaced_pod(
+        namespace, watch=False, label_selector=selector_str
+    )
 
-    #update deployment
-    #exec mysql statment in pod
+    for pod in pods.items:
+        print(pod.metadata.name)
+        pod_name = pod.metadata.name
 
-    logger.info('Root password changed')
+    while True:
+        resp = api_coreV1.read_namespaced_pod(pod_name, namespace)
+        if resp.status.phase == 'Running':
+            break
+        else:
+            logger.info("Instance pod is not running")
+        time.sleep(5)
+
+    db_name = "otus-database"
+    exec_command = ["mysql", f"-p{old}", '-e "show databases;"', db_name]
+
+    # exec_resp = api_coreV1.connect_get_namespaced_pod_exec(
+    #     pod_name,
+    #     namespace,
+    #     command=exec_command,
+    #     stderr=True,
+    #     stdin=False,
+    #     stdout=True,
+    #     tty=False,
+    # )
+    # print("Response: " + exec_resp)
+
+    resp = stream(
+        api_coreV1.connect_get_namespaced_pod_exec,
+        pod_name,
+        namespace,
+        command=exec_command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+    print("Response: " + resp)
+
+    logger.info("Root password changed")

@@ -34,9 +34,15 @@ spec:
               - password
               - storage_size
       additionalPrinterColumns:
+      - name: DBMS Image
+        type: string
+        jsonPath: .spec.image
       - name: Size
         type: string
         jsonPath: .spec.storage_size
+      - name: DB Name
+        type: string
+        jsonPath: .spec.database
       - name: Message
         type: string
         jsonPath: .status.message
