@@ -224,10 +224,9 @@ def change_rootpswd(old, new, status, namespace, **kwargs):
         time.sleep(5)
 
     db_name = "otus-database"
-    command=f'mysql -p{old} -e"show databases" {db_name}'
-    logger.info(f'Executing: {command}')
-    print(command.split())
-    exec_command = ["mysql", f"-p{old}", "-e", "show databases", db_name]
+    # exec_command = ["mysql", f"-p{old}", "-e", "show databases", db_name]
+    exec_command = ["mysql", f"-p{old}", "-e", f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{new}'", db_name]
+
 
     # exec_resp = api_coreV1.connect_get_namespaced_pod_exec(
     #     pod_name,
