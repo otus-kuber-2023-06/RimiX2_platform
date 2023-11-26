@@ -179,6 +179,7 @@ def delete_object_make_backup(body, **kwargs):
 
     # Cоздаем backup job:
     api_batchV1 = kubernetes.client.BatchV1Api()
+    logger.info(f"Creating job with root password: {password}")
     backup_job = render_template(
         "backup-job.yml.j2",
         {"name": name, "image": image, "password": password, "database": database},
@@ -191,11 +192,11 @@ def delete_object_make_backup(body, **kwargs):
 
 # Меняем пароль суперпользователя на сервере
 @kopf.on.field("otus.homework", "v1", "mysqls", field="spec.password")
-def change_rootpswd(old, new, status, namespace, **kwargs):
-    if old=='None':
+def change_rootpswd(old, new, status, namespace, spec, **kwargs):
+    if old is None:
         return
-    
-    logger.info('Changing root password ...')
+
+    logger.info("Changing root password ...")
 
     dpl_name = status["create"]["deployment-name"]
     api_appsV1 = kubernetes.client.AppsV1Api()
@@ -217,27 +218,20 @@ def change_rootpswd(old, new, status, namespace, **kwargs):
 
     while True:
         resp = api_coreV1.read_namespaced_pod(pod_name, namespace)
-        if resp.status.phase == 'Running':
+        if resp.status.phase == "Running":
             break
         else:
             logger.info("Instance pod is not running")
         time.sleep(5)
 
-    db_name = "otus-database"
-    # exec_command = ["mysql", f"-p{old}", "-e", "show databases", db_name]
-    exec_command = ["mysql", f"-p{old}", "-e", f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{new}'", db_name]
-
-
-    # exec_resp = api_coreV1.connect_get_namespaced_pod_exec(
-    #     pod_name,
-    #     namespace,
-    #     command=exec_command,
-    #     stderr=True,
-    #     stdin=False,
-    #     stdout=True,
-    #     tty=False,
-    # )
-    # print("Response: " + exec_resp)
+    db_name = spec["database"]
+    exec_command = [
+        "mysql",
+        f"-p{old}",
+        "-e",
+        f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{new}'",
+        db_name,
+    ]
 
     resp = stream(
         api_coreV1.connect_get_namespaced_pod_exec,
@@ -249,5 +243,18 @@ def change_rootpswd(old, new, status, namespace, **kwargs):
         stdout=True,
         tty=False,
     )
-    logger.info(f'Exec result: {resp}') 
+    logger.debug(f"Exec result: {resp}")
     logger.info(f"Root password changed from {old} to {new}")
+
+    # new_env_vars = [
+    #     {"name": "MYSQL_ROOT_PASSWORD", "value": new},
+    # ]
+    # new_env_vars_list = [kubernetes.client.V1EnvVar(name=var["name"], value=var["value"]) for var in new_env_vars]
+    # print(new_env_vars_list)
+
+    # print(dpl.spec.template.spec.containers)
+    # api_appsV1.patch_namespaced_deployment(
+    #     dpl_name,
+    #     namespace,
+    #     body=dpl,
+    # )
