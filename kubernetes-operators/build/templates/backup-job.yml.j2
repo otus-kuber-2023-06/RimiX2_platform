@@ -17,10 +17,10 @@ spec:
         command:
         - /bin/sh
         - -c
-        - "mysqldump -u root -h {{ name }}-svc -p{{ password }} {{ database }}  > /backup-{{ name }}-pv/{{ name }}-dump.sql"
+        - "mysqldump -u root -h {{ name }}-svc -p{{ password }} {{ database }} > /backup/{{ name }}-dump.sql"
         volumeMounts:
         - name: backup-{{ name }}-pv
-          mountPath: /backup-{{ name }}-pv
+          mountPath: /backup
       volumes:
       - name: backup-{{ name }}-pv
         persistentVolumeClaim:

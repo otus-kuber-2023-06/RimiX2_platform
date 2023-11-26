@@ -14,6 +14,10 @@ spec:
       containers:
       - image: {{ image }}
         name: {{ name }}
+        resources:
+          requests:
+            cpu: 0.5
+            memory: 1Gi
         args:
         - "--default-authentication-plugin=mysql_native_password"
         env:
@@ -27,6 +31,12 @@ spec:
         volumeMounts:
         - name: {{ name }}-pv
           mountPath: /var/lib/mysql
+        # readinessProbe:
+        #   exec:
+        #     command: ["mysql", "-p$MYSQL_ROOT_PASSWORD", '-e"SELECT 1"']
+        # livenessProbe:
+        #   exec:
+        #     command: ["mysqladmin", "-p$MYSQL_ROOT_PASSWORD", "ping"]
       volumes:
       - name: {{ name }}-pv
         persistentVolumeClaim:

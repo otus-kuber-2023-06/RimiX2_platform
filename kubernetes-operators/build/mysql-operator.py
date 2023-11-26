@@ -32,7 +32,7 @@ def update_status(body, msg):
 
 @kopf.on.create("otus.homework", "v1", "mysqls")
 # Функция, которая будет запускаться при создании объектов тип MySQL:
-def mysql_on_create(body, spec, **kwargs):
+def create(body, spec, **kwargs):
     # cохраняем в переменные содержимое описания MySQL из CR
     name = body["metadata"]["name"]
     image = spec["image"]
@@ -192,8 +192,12 @@ def delete_object_make_backup(body, **kwargs):
 # Меняем пароль суперпользователя на сервере
 @kopf.on.field("otus.homework", "v1", "mysqls", field="spec.password")
 def change_rootpswd(old, new, status, namespace, **kwargs):
-    logger.info(f'Changed from "{old}" to "{new}"')
-    dpl_name = status["mysql_on_create"]["deployment-name"]
+    if old=='None':
+        return
+    
+    logger.info('Changing root password ...')
+
+    dpl_name = status["create"]["deployment-name"]
     api_appsV1 = kubernetes.client.AppsV1Api()
     dpl = api_appsV1.read_namespaced_deployment(dpl_name, namespace)
     # print(deployment)
@@ -209,7 +213,6 @@ def change_rootpswd(old, new, status, namespace, **kwargs):
     )
 
     for pod in pods.items:
-        print(pod.metadata.name)
         pod_name = pod.metadata.name
 
     while True:
@@ -221,7 +224,10 @@ def change_rootpswd(old, new, status, namespace, **kwargs):
         time.sleep(5)
 
     db_name = "otus-database"
-    exec_command = ["mysql", f"-p{old}", '-e "show databases;"', db_name]
+    command=f'mysql -p{old} -e"show databases" {db_name}'
+    logger.info(f'Executing: {command}')
+    print(command.split())
+    exec_command = ["mysql", f"-p{old}", "-e", "show databases", db_name]
 
     # exec_resp = api_coreV1.connect_get_namespaced_pod_exec(
     #     pod_name,
@@ -244,6 +250,5 @@ def change_rootpswd(old, new, status, namespace, **kwargs):
         stdout=True,
         tty=False,
     )
-    print("Response: " + resp)
-
-    logger.info("Root password changed")
+    logger.info(f'Exec result: {resp}') 
+    logger.info(f"Root password changed from {old} to {new}")

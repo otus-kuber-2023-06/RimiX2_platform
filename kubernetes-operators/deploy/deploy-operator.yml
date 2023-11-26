@@ -15,5 +15,5 @@ spec:
       serviceAccountName: mysql-operator-sa
       containers:
         - name: operator
-          image: "ghcr.io/rimix2/mysqloperator:0.1.0"
+          image: "ghcr.io/rimix2/mysqloperator:0.2.0"
           imagePullPolicy: "Always"

@@ -58,7 +58,7 @@ customresourcedefinition.apiextensions.k8s.io/mysqls.otus.homework created
 Создадим тестовую таблицу в нем:
 ```
 # export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
-# kubectl exec -it $MYSQLPOD -- mysql -u root -potuspassword -e "CREATE TABLE test (id smallint unsigned not null \ auto_increment, name varchar(20) not null, constraint pk_example primary key (id) );" otus-database
+# kubectl exec -it $MYSQLPOD -- mysql -u root -potuspassword -e "CREATE TABLE test (id smallint unsigned not null auto_increment, name varchar(20) not null, constraint pk_example primary key (id) );" otus-database
 ```
 
 Заполним её данными:
