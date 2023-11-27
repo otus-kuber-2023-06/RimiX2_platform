@@ -21,8 +21,8 @@ spec:
         args:
         - "--default-authentication-plugin=mysql_native_password"
         readinessProbe:
-          initialDelaySeconds: 60
-          periodSeconds: 10
+          initialDelaySeconds: 45
+          periodSeconds: 15
           exec:
             command: 
               - bash

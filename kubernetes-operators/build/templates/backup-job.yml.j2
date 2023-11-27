@@ -23,7 +23,9 @@ spec:
         command:
         - /bin/sh
         - -c
-        - "mysqldump -u root -h {{ name }}-svc -p$MYSQL_ROOT_PASSWORD {{ database }} > /backup/{{ name }}-dump.sql"
+        - |
+          env | sort
+          mysqldump -u root -h {{ name }}-svc -p$MYSQL_ROOT_PASSWORD {{ database }} > /backup/{{ name }}-dump.sql
         volumeMounts:
         - name: backup-{{ name }}-pv
           mountPath: /backup

@@ -62,7 +62,7 @@ def create(body, spec, **kwargs):
     )
     restore_job = render_template(
         "restore-job.yml.j2",
-        {"name": name, "image": image, "password": root_password, "database": database},
+        {"name": name, "image": image, "database": database},
     )
 
     # kopf.adopt(persistent_volume)
@@ -70,11 +70,9 @@ def create(body, spec, **kwargs):
     # kopf.adopt(service)
     # kopf.adopt(deployment)
 
-    # kopf.append_owner_reference(persistent_volume, owner=body)
     kopf.append_owner_reference(persistent_volume_claim, owner=body)
     kopf.append_owner_reference(service, owner=body)
     kopf.append_owner_reference(deployment, owner=body)
-    kopf.append_owner_reference(secret, owner=body)
     kopf.append_owner_reference(restore_job, owner=body)
 
     api_coreV1 = kubernetes.client.CoreV1Api()
@@ -99,8 +97,12 @@ def create(body, spec, **kwargs):
     api_coreV1.create_namespaced_persistent_volume_claim(namespace, persistent_volume_claim)
     # Создаем mysql SVC:
     api_coreV1.create_namespaced_service(namespace, service)
-    # Создаём mysql Secret (с паролем для root):
-    api_coreV1.create_namespaced_secret(namespace, secret)
+
+    try:
+        # Создаём mysql Secret (с паролем для root), если не его не существует:
+        api_coreV1.create_namespaced_secret(namespace, secret)
+    except kubernetes.client.exceptions.ApiException:
+        pass
 
     # Создаем mysql Deployment:
     api_appsV1 = kubernetes.client.AppsV1Api()
@@ -184,16 +186,14 @@ def wait_until_job_end(jobname, namespace):
 def delete_object_make_backup(body, **kwargs):
     name = body["metadata"]["name"]
     image = body["spec"]["image"]
-    password = body["spec"]["password"]
     database = body["spec"]["database"]
     namespace = body["metadata"]["namespace"]
-
+    
     # Cоздаем backup job:
     api_batchV1 = kubernetes.client.BatchV1Api()
-    logger.info(f"Creating job with root password: {password}")
     backup_job = render_template(
         "backup-job.yml.j2",
-        {"name": name, "image": image, "password": password, "database": database},
+        {"name": name, "image": image, "database": database},
     )
     api_batchV1.create_namespaced_job(namespace, backup_job)
     wait_until_job_end(f"backup-{name}-job", namespace)
@@ -207,7 +207,12 @@ def change_rootpswd(old, new, status, namespace, body, **kwargs):
     if old is None:
         return
 
-    logger.info("Changing root password ...")
+    logger.info("Changing root-password ...")
+
+    api_coreV1 = kubernetes.client.CoreV1Api()
+    secret_name = body["metadata"]["name"]
+    current_secret = api_coreV1.read_namespaced_secret(secret_name, namespace)
+    real_old = base64.b64decode((current_secret.data['root-password']).encode("utf-8")).decode("utf-8")
 
     dpl_name = status["create"]["deployment-name"]
     api_appsV1 = kubernetes.client.AppsV1Api()
@@ -219,7 +224,6 @@ def change_rootpswd(old, new, status, namespace, body, **kwargs):
     for key, value in data.items():
         selector_str = "{0}={1}".format(key, value)
 
-    api_coreV1 = kubernetes.client.CoreV1Api()
     pods = api_coreV1.list_namespaced_pod(
         namespace, watch=False, label_selector=selector_str
     )
@@ -238,9 +242,9 @@ def change_rootpswd(old, new, status, namespace, body, **kwargs):
     db_name = body["spec"]["database"]
     exec_command = [
         "mysql",
-        f"-p{old}",
+        f"-p{real_old}",
         "-e",
-        f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{new}'",
+        f"ALTER USER 'root'@'%' IDENTIFIED BY '{new}';ALTER USER 'root'@'localhost' IDENTIFIED BY '{new}'",
         db_name,
     ]
     resp = stream(
@@ -255,15 +259,20 @@ def change_rootpswd(old, new, status, namespace, body, **kwargs):
     )
     logger.debug(f"Exec result: {resp}")
 
-    secret_name = body["metadata"]["name"]
-    current_secret = api_coreV1.read_namespaced_secret(secret_name, namespace)
     new_data = {
         "root-password": base64.b64encode(new.encode("utf-8")).decode("utf-8")
     }
     current_secret.data.update(new_data)
     api_coreV1.replace_namespaced_secret(secret_name, namespace, body=current_secret)
 
-    api_coreV1.delete_namespaced_pod(pod_name, namespace, grace_period_seconds=0)
+    for pod in pods.items:
+        api_coreV1.delete_namespaced_pod(pod.metadata.name, namespace, grace_period_seconds=0)
 
-    logger.info(f"Root password changed from {old} to {new}")
+    # current_scale = api_appsV1.read_namespaced_deployment_scale(dpl_name, namespace)
+    # current_scale.spec.replicas = 0
+    # current_scale = api_appsV1.replace_namespaced_deployment_scale(dpl_name, namespace, body=current_scale)
+    # current_scale.spec.replicas = 1
+    # current_scale = api_appsV1.replace_namespaced_deployment_scale(dpl_name, namespace, body=current_scale) 
+
+    logger.info(f"Root-password changed from {real_old} to {new}")
 

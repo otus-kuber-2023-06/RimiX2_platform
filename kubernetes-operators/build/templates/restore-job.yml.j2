@@ -21,7 +21,9 @@ spec:
         command:
         - /bin/sh
         - -c
-        - "mysql -u root -h {{ name }}-svc -p$MYSQL_ROOT_PASSWORD {{ database }} < /backup/{{ name }}-dump.sql"
+        - | 
+          env | sort
+          mysql -u root -h {{ name }}-svc -p$MYSQL_ROOT_PASSWORD {{ database }} < /backup/{{ name }}-dump.sql
         volumeMounts:
         - name: backup-{{ name }}-pv
           mountPath: /backup
