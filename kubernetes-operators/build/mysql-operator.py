@@ -256,7 +256,7 @@ def change_rootpswd(old, new, status, namespace, body, **kwargs):
     secret_name = body["metadata"]["name"]
     current_secret = api_coreV1.read_namespaced_secret(secret_name, namespace)
     new_data = {
-        "root-password": base64.b64encode(new.encode('utf-8'))
+        "root-password": base64.b64encode(new.encode("utf-8")).decode("utf-8")
     }
     current_secret.data.update(new_data)
     api_coreV1.replace_namespaced_secret(secret_name, namespace, body=current_secret)
