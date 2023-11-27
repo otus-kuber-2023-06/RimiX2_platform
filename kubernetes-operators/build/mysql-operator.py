@@ -6,10 +6,12 @@ from kubernetes.stream import stream
 import time
 import logging as logger
 from jinja2 import Environment, FileSystemLoader
+import base64
 
 
 def render_template(filename, vars_dict):
     env = Environment(loader=FileSystemLoader("./templates"))
+    # env.filters['b64encode'] = base64.b64encode
     template = env.get_template(filename)
     yaml_manifest = template.render(vars_dict)
     json_manifest = yaml.load(yaml_manifest, Loader=yaml.Loader)
@@ -36,7 +38,7 @@ def create(body, spec, **kwargs):
     # cохраняем в переменные содержимое описания MySQL из CR
     name = body["metadata"]["name"]
     image = spec["image"]
-    password = body["spec"]["password"]
+    root_password = body["spec"]["password"]
     database = body["spec"]["database"]
     storage_size = body["spec"]["storage_size"]
     namespace = body["metadata"]["namespace"]
@@ -49,17 +51,18 @@ def create(body, spec, **kwargs):
         "mysql-pvc.yml.j2", {"name": name, "storage_size": storage_size}
     )
     service = render_template("mysql-service.yml.j2", {"name": name})
+
     secret = render_template(
         "mysql-secret.yml.j2",
-        {"name": name, "password": password},
+        {"name": name, "encoded_password": base64.b64encode(root_password.encode("utf-8")).decode("utf-8")},
     )
     deployment = render_template(
         "mysql-deployment.yml.j2",
-        {"name": name, "image": image, "password": password, "database": database},
+        {"name": name, "image": image, "password": root_password, "database": database},
     )
     restore_job = render_template(
         "restore-job.yml.j2",
-        {"name": name, "image": image, "password": password, "database": database},
+        {"name": name, "image": image, "password": root_password, "database": database},
     )
 
     # kopf.adopt(persistent_volume)
@@ -253,7 +256,7 @@ def change_rootpswd(old, new, status, namespace, body, **kwargs):
     secret_name = body["metadata"]["name"]
     current_secret = api_coreV1.read_namespaced_secret(secret_name, namespace)
     new_data = {
-        "root-password": new
+        "root-password": base64.b64encode(new.encode('utf-8'))
     }
     current_secret.data.update(new_data)
     api_coreV1.replace_namespaced_secret(secret_name, namespace, body=current_secret)
