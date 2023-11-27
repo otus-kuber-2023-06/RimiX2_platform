@@ -20,9 +20,21 @@ spec:
             memory: 1Gi
         args:
         - "--default-authentication-plugin=mysql_native_password"
+        readinessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          exec:
+            command: 
+              - bash
+              - "-c"
+              - |
+                mysqladmin -p$MYSQL_ROOT_PASSWORD ping &> /dev/null
         env:
         - name: MYSQL_ROOT_PASSWORD
-          value: {{ password }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ name }}
+              key: root-password
         - name: MYSQL_DATABASE
           value: {{ database }}
         ports:
@@ -31,9 +43,6 @@ spec:
         volumeMounts:
         - name: {{ name }}-pv
           mountPath: /var/lib/mysql
-        # readinessProbe:
-        #   exec:
-        #     command: ["mysql", "-p$MYSQL_ROOT_PASSWORD", '-e"SELECT 1"']
         # livenessProbe:
         #   exec:
         #     command: ["mysqladmin", "-p$MYSQL_ROOT_PASSWORD", "ping"]

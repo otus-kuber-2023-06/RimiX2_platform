@@ -49,6 +49,10 @@ def create(body, spec, **kwargs):
         "mysql-pvc.yml.j2", {"name": name, "storage_size": storage_size}
     )
     service = render_template("mysql-service.yml.j2", {"name": name})
+    secret = render_template(
+        "mysql-secret.yml.j2",
+        {"name": name, "password": password},
+    )
     deployment = render_template(
         "mysql-deployment.yml.j2",
         {"name": name, "image": image, "password": password, "database": database},
@@ -67,6 +71,7 @@ def create(body, spec, **kwargs):
     kopf.append_owner_reference(persistent_volume_claim, owner=body)
     kopf.append_owner_reference(service, owner=body)
     kopf.append_owner_reference(deployment, owner=body)
+    kopf.append_owner_reference(secret, owner=body)
     kopf.append_owner_reference(restore_job, owner=body)
 
     api_coreV1 = kubernetes.client.CoreV1Api()
@@ -88,11 +93,12 @@ def create(body, spec, **kwargs):
             raise e
 
     # Создаем mysql PVC:
-    api_coreV1.create_namespaced_persistent_volume_claim(
-        namespace, persistent_volume_claim
-    )
+    api_coreV1.create_namespaced_persistent_volume_claim(namespace, persistent_volume_claim)
     # Создаем mysql SVC:
     api_coreV1.create_namespaced_service(namespace, service)
+    # Создаём mysql Secret (с паролем для root):
+    api_coreV1.create_namespaced_secret(namespace, secret)
+
     # Создаем mysql Deployment:
     api_appsV1 = kubernetes.client.AppsV1Api()
     deploy = api_appsV1.create_namespaced_deployment(namespace, deployment)
@@ -192,7 +198,7 @@ def delete_object_make_backup(body, **kwargs):
 
 # Меняем пароль суперпользователя на сервере
 @kopf.on.field("otus.homework", "v1", "mysqls", field="spec.password")
-def change_rootpswd(old, new, status, namespace, spec, **kwargs):
+def change_rootpswd(old, new, status, namespace, body, **kwargs):
     if old is None:
         return
 
@@ -224,7 +230,7 @@ def change_rootpswd(old, new, status, namespace, spec, **kwargs):
             logger.info("Instance pod is not running")
         time.sleep(5)
 
-    db_name = spec["database"]
+    db_name = body["spec"]["database"]
     exec_command = [
         "mysql",
         f"-p{old}",
@@ -232,7 +238,6 @@ def change_rootpswd(old, new, status, namespace, spec, **kwargs):
         f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{new}'",
         db_name,
     ]
-
     resp = stream(
         api_coreV1.connect_get_namespaced_pod_exec,
         pod_name,
@@ -244,17 +249,16 @@ def change_rootpswd(old, new, status, namespace, spec, **kwargs):
         tty=False,
     )
     logger.debug(f"Exec result: {resp}")
+
+    secret_name = body["metadata"]["name"]
+    current_secret = api_coreV1.read_namespaced_secret(secret_name, namespace)
+    new_data = {
+        "root-password": new
+    }
+    current_secret.data.update(new_data)
+    api_coreV1.replace_namespaced_secret(secret_name, namespace, body=current_secret)
+
+    api_coreV1.delete_namespaced_pod(pod_name, namespace, grace_period_seconds=0)
+
     logger.info(f"Root password changed from {old} to {new}")
 
-    # new_env_vars = [
-    #     {"name": "MYSQL_ROOT_PASSWORD", "value": new},
-    # ]
-    # new_env_vars_list = [kubernetes.client.V1EnvVar(name=var["name"], value=var["value"]) for var in new_env_vars]
-    # print(new_env_vars_list)
-
-    # print(dpl.spec.template.spec.containers)
-    # api_appsV1.patch_namespaced_deployment(
-    #     dpl_name,
-    #     namespace,
-    #     body=dpl,
-    # )
