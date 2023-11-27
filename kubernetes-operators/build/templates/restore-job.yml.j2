@@ -12,10 +12,16 @@ spec:
       - name: restore-{{ name }}
         image: {{ image }}
         imagePullPolicy: IfNotPresent
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ name }}
+              key: root-password
         command:
         - /bin/sh
         - -c
-        - "mysql -u root -h {{ name }}-svc -p{{ password }} {{ database }} < /backup/{{ name }}-dump.sql"
+        - "mysql -u root -h {{ name }}-svc -p$MYSQL_ROOT_PASSWORD {{ database }} < /backup/{{ name }}-dump.sql"
         volumeMounts:
         - name: backup-{{ name }}-pv
           mountPath: /backup

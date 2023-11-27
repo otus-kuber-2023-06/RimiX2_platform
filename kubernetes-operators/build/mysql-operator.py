@@ -126,6 +126,8 @@ def create(body, spec, **kwargs):
                 update_status(body, "Restoring DB have failed")
         except kubernetes.client.rest.ApiException:
             update_status(body, "Restoring DB have failed")
+    else:
+        update_status(body, "DB backup not found")
 
     # Cоздаем PVC и PV для будущего бэкапа (если они есть, пропускаем их создание):
     try:
