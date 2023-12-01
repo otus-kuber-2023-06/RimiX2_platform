@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backup-{{ name }}-job
+  labels:
+    usage: backup-{{ name }}-job
+spec:
+  template:
+    metadata:
+      name: backup-{{ name }}-job
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: backup-{{ name }}
+        image: {{ image }}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ name }}
+              key: root-password        
+        command:
+        - /bin/sh
+        - -c
+        - |
+          env | sort
+          mysqldump -u root -h {{ name }}-svc -p$MYSQL_ROOT_PASSWORD {{ database }} > /backup/{{ name }}-dump.sql
+        volumeMounts:
+        - name: backup-{{ name }}-pv
+          mountPath: /backup
+      volumes:
+      - name: backup-{{ name }}-pv
+        persistentVolumeClaim:
+          claimName: backup-{{ name }}-pvc

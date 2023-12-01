@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ name }}
+  template:
+    metadata:
+      labels:
+        app: {{ name }}
+    spec:
+      containers:
+      - image: {{ image }}
+        name: {{ name }}
+        resources:
+          requests:
+            cpu: 0.5
+            memory: 1Gi
+        args:
+        - "--default-authentication-plugin=mysql_native_password"
+        readinessProbe:
+          initialDelaySeconds: 45
+          periodSeconds: 15
+          exec:
+            command: 
+              - bash
+              - "-c"
+              - |
+                mysqladmin -p$MYSQL_ROOT_PASSWORD ping &> /dev/null
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ name }}
+              key: root-password
+        - name: MYSQL_DATABASE
+          value: {{ database }}
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: {{ name }}-pv
+          mountPath: /var/lib/mysql
+        # livenessProbe:
+        #   exec:
+        #     command: ["mysqladmin", "-p$MYSQL_ROOT_PASSWORD", "ping"]
+      volumes:
+      - name: {{ name }}-pv
+        persistentVolumeClaim:
+          claimName: {{ name }}-pvc

@@ -1,0 +1,4 @@
+kopf
+kubernetes
+Jinja2
+pyyaml
