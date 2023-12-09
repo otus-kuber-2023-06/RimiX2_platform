@@ -91,7 +91,7 @@ kubectl debug node/[node-name] -it --image=[debugging-tool-image]
 ```
 Контейнеру предоставляются все неймспейсы хоста и  его файловая система, которая доступна в контейнере в точке /host.
 
-## Диагностика сетевых политик
+## Диагностика сетевых политик (журналирование)
 
 Иногда при использовании сетевых политик (NetworkPolicy), работающих на сетевом и транспортном (3-4) уровнях, возникает необходимость быстро понимать причину "непрохождения" трафика. Одним из решений была запись в журнал событий пода всех случаев "отбрасывания" пакетов iptables c помощью [kube-iptables-tailer](https://github.com/box/kube-iptables-tailer).
 По сути это конвертер файлового лога в события k8s.
@@ -117,7 +117,7 @@ echo ':msg, contains, "calico-packet: " -/var/log/iptables.log' > /etc/rsyslog.d
 echo '& ~' >> /etc/rsyslog.d/iptables.conf
 ```
 
-В случае воркер-нод на докере необходимо учитывать [ограничение](https://serverfault.com/questions/691730/iptables-log-rule-inside-a-network-namespace) в логировании из других сетевых неймспейсов. На ноде c версией ядра не ниже 4.11 можно выполнить:
+В случае воркер-нод на докере необходимо учитывать [ограничение](https://serverfault.com/questions/691730/iptables-log-rule-inside-a-network-namespace) в логировании из других сетевых неймспейсов. На всех нодах c версией Linux ядра не ниже 4.11 можно выполнить:
 ```
 sysctl -w net.netfilter.nf_log_all_netns=1
 ```
@@ -135,13 +135,64 @@ kubectl apply -f tailer-daemonset.yaml
 
 ### Тест журналирования на примере подов оператора Netperf
 
-### Создание сетевой политики с правилами
+Установим оператор:
+```
+kubectl -f apply deploy/crd.yaml
+kubectl -f apply deploy/rbac.yaml
+kubectl -f apply deploy/operator.yaml
+```
 
-kit/net-policy-calico.yaml
 
-[*]
+Запустим тест пропускной способности между подами:
 
-- Исправьте ошибку в нашей сетевой политике, чтобы Netperf снова начал
-работать
-- Поправьте манифест DaemonSet из репозитория, чтобы в логах
-отображались имена Podов, а не их IP-адреса
+```
+kubectl -f apply deploy/cr.yaml
+```
+
+Т.к. никакой сетевой политики, запрещающей трафик внутри того же неймспейса что и поды оператора (клиент и сервер) нет, тест успешно проводится:
+```
+kubectl describe netperf/example | tail -n 6
+Status:
+  Client Pod:          netperf-client-g9dd3166050a
+  Server Pod:          netperf-server-g9dd3166050a
+  Speed Bits Per Sec:  9254.22
+  Status:              Done
+Events:                <none>
+```
+
+Создадим сетевую политику запрещающий любой трафик внутри неймспейса и перезапустим тест:
+```
+kubectl -f delete deploy/cr.yaml
+kubectl -f apply deploy/cr.yaml
+kubectl describe netperf/example | tail -n 6
+kubectl -f apply net-policy-calico-deny-all.yaml
+Status:
+  Client Pod:          netperf-client-616ebca905a4
+  Server Pod:          netperf-server-616ebca905a4
+  Speed Bits Per Sec:  0
+  Status:              Started test
+Events:                <none>
+```
+Видим в событиях клиентского и серверного подов записи об отброшенных пакетах:
+```
+kubectl get events --sort-by='.metadata.creationTimestamp'
+15s         Warning   PacketDrop   pod/netperf-client-b9cb4161059f   Packet dropped when sending traffic to default (192.168.110.144)
+15s         Warning   PacketDrop   pod/netperf-server-b9cb4161059f   Packet dropped when receiving traffic from default (192.168.162.147)
+```
+
+Применим новую сетевую политику с высшим приоритетом, разрешающую трафик для проведения тестирования с помощью подов оператора Netperf:
+```
+kubectl -f apply net-policy-calico-allow-netperf.yaml
+```
+Тест снова проходит успешно:
+```
+kubectl -f delete deploy/cr.yaml
+kubectl -f apply deploy/cr.yaml
+kubectl describe netperf/example | tail -n 6
+Status:
+  Client Pod:          netperf-client-b9cb4161059f
+  Server Pod:          netperf-server-b9cb4161059f
+  Speed Bits Per Sec:  9053.07
+  Status:              Done
+Events:                <none>
+```

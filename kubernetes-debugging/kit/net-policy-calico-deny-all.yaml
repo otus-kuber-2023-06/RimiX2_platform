@@ -1,13 +1,16 @@
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: deny-all-default
+  name: deny-all
 spec:
+  order: 20
   selector: "all()"
   types:
     - Ingress
     - Egress
   ingress:
     - action: Log
+    - action: Deny
   egress:
     - action: Log
+    - action: Deny

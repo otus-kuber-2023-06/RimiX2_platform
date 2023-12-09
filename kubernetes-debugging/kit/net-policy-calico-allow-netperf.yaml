@@ -1,7 +1,7 @@
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: netperf-calico-policy
+  name: allow-netperf
 spec:
   order: 10
   selector: app == "netperf-operator"

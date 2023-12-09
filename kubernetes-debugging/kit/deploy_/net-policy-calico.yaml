@@ -1,7 +1,7 @@
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-iperf3-traffic
+  name: allow-iperf3-traffic-only
 spec:
   selector: app == 'iperf3'
   types:
