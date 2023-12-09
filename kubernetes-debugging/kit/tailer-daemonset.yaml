@@ -23,8 +23,6 @@
                 value: name
               - name: LOG_LEVEL
                 value: debug
-              - name: JOURNAL_DIRECTORY
-                value: "/var/log/journal"
               - name: "IPTABLES_LOG_PATH"
                 value: "/var/log/syslog"
               - name: "IPTABLES_LOG_PREFIX"
@@ -62,6 +60,9 @@ rules:
   - apiGroups: ["v1"]
     resources: ["pods"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
 
 ---
 

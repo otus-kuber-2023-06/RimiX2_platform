@@ -1,9 +1,8 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: "DaemonSet"
 metadata:
-  name: iperf3-deployment
+  name: iperf3-daemonset
 spec:
-  replicas: 4
   selector:
     matchLabels:
       app: iperf3
@@ -13,7 +12,7 @@ spec:
         app: iperf3
     spec:
       containers:
-      - name: iperf3
-        image: frauhottelmann/docker-iperf3
-        ports:
-        - containerPort: 5201
+        - name: iperf3
+          image: frauhottelmann/docker-iperf3
+          ports:
+          - containerPort: 5201

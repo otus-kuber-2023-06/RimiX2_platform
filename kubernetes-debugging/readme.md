@@ -91,13 +91,47 @@ kubectl debug node/[node-name] -it --image=[debugging-tool-image]
 ```
 Контейнеру предоставляются все неймспейсы хоста и  его файловая система, которая доступна в контейнере в точке /host.
 
-## iptables-tailer
+## Диагностика сетевых политик
 
-Иногда при использовании сетевых политик (NetworkPolicy), работающих на сетевом и транспортном (3-4) уровнях, возникает необходимость быстро понимать причину "непрохождения" трафика. Одним из решений является запись в журнал событий пода всех случаев "отбрасывания" пакетов iptables c помощью [kube-iptables-tailer](https://github.com/box/kube-iptables-tailer)
+Иногда при использовании сетевых политик (NetworkPolicy), работающих на сетевом и транспортном (3-4) уровнях, возникает необходимость быстро понимать причину "непрохождения" трафика. Одним из решений была запись в журнал событий пода всех случаев "отбрасывания" пакетов iptables c помощью [kube-iptables-tailer](https://github.com/box/kube-iptables-tailer).
+По сути это конвертер файлового лога в события k8s.
 
-### Установка
+### Установка iptables-tailer
 
-kit/tailer-daemonset.yaml
+Требуется старая версия k8s - 1.19, в которой ещё не выключен "RefLink Propagation".
+Используем старый kind версии [0.17](https://github.com/kubernetes-sigs/kind/releases/download/v0.17.0/kind-windows-amd64) c образом для нод "kindest/node:v1.19.16":
+```
+kind-old create cluster --config kind-config.yml
+```
+В каждой worker-ноде должен быть настроен rsyslog c прецизионным форматом времени - строка 35 в конфигурационном файле:
+```
+apt update
+apt install -y rsyslog
+sed -i '35 s/^/#/' /etc/rsyslog.conf
+systemctl start rsyslog
+```
+
+При желании можно перенаправить логи в отдельный файл iptables.log:
+```
+echo ':msg, contains, "calico-packet: " -/var/log/iptables.log' > /etc/rsyslog.d/10-iptables.conf
+echo '& ~' >> /etc/rsyslog.d/iptables.conf
+```
+
+В случае воркер-нод на докере необходимо учитывать [ограничение](https://serverfault.com/questions/691730/iptables-log-rule-inside-a-network-namespace) в логировании из других сетевых неймспейсов. На ноде c версией ядра не ниже 4.11 можно выполнить:
+```
+sysctl -w net.netfilter.nf_log_all_netns=1
+```
+
+Устанавливаем CNI в кластер от Calico:
+```
+kubectl create -f https://docs.projectcalico.org/archive/v3.19/manifests/tigera-operator.yaml
+kubectl create -f https://docs.projectcalico.org/archive/v3.19/manifests/custom-resources.yaml
+kubectl get pods -l k8s-app=calico-node -n calico-system
+```
+
+```
+kubectl apply -f tailer-daemonset.yaml
+```
 
 ### Тест журналирования на примере подов оператора Netperf
 
