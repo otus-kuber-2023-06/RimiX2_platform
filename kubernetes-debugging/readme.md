@@ -1,4 +1,4 @@
-# (debugging)
+# 13 (debugging)
 
 ## kubectl debug
 
@@ -128,9 +128,9 @@ kubectl create -f https://docs.projectcalico.org/archive/v3.19/manifests/tigera-
 kubectl create -f https://docs.projectcalico.org/archive/v3.19/manifests/custom-resources.yaml
 kubectl get pods -l k8s-app=calico-node -n calico-system
 ```
-
+Установим енпосредственно сам iptables-tailer:
 ```
-kubectl apply -f tailer-daemonset.yaml
+kubectl apply -f tailer-manifests.yaml
 ```
 
 ### Тест журналирования на примере подов оператора Netperf
@@ -142,14 +142,13 @@ kubectl -f apply deploy/rbac.yaml
 kubectl -f apply deploy/operator.yaml
 ```
 
-
 Запустим тест пропускной способности между подами:
 
 ```
 kubectl -f apply deploy/cr.yaml
 ```
 
-Т.к. никакой сетевой политики, запрещающей трафик внутри того же неймспейса что и поды оператора (клиент и сервер) нет, тест успешно проводится:
+Т.к. никакой сетевой политики, запрещающей трафик внутри того же неймспейса, что и поды оператора (клиент и сервер), нет, тест успешно проводится:
 ```
 kubectl describe netperf/example | tail -n 6
 Status:
@@ -176,8 +175,8 @@ Events:                <none>
 Видим в событиях клиентского и серверного подов записи об отброшенных пакетах:
 ```
 kubectl get events --sort-by='.metadata.creationTimestamp'
-15s         Warning   PacketDrop   pod/netperf-client-b9cb4161059f   Packet dropped when sending traffic to default (192.168.110.144)
-15s         Warning   PacketDrop   pod/netperf-server-b9cb4161059f   Packet dropped when receiving traffic from default (192.168.162.147)
+15s         Warning   PacketDrop   pod/netperf-client-b9cb4161059f   Packet dropped when sending traffic to netperf-server-b9cb4161059f (192.168.110.144)
+15s         Warning   PacketDrop   pod/netperf-server-b9cb4161059f   Packet dropped when receiving traffic from netperf-client-b9cb4161059f (192.168.162.147)
 ```
 
 Применим новую сетевую политику с высшим приоритетом, разрешающую трафик для проведения тестирования с помощью подов оператора Netperf:
