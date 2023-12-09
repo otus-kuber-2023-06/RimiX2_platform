@@ -1,0 +1,13 @@
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-default
+spec:
+  selector: "all()"
+  types:
+    - Ingress
+    - Egress
+  ingress:
+    - action: Log
+  egress:
+    - action: Log

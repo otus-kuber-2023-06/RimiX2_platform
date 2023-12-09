@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-iperf3-traffic
+  name: allow-iperf3-traffic-only
 spec:
   podSelector:
     matchLabels:
@@ -14,6 +14,7 @@ spec:
     - podSelector:
         matchLabels:
           app: iperf3
+  - {}
   egress:
   - to:
     - podSelector:
@@ -21,4 +22,5 @@ spec:
           app: iperf3
     ports:
     - protocol: TCP
-      port: 5201
+      port: 5202
+  - {}

@@ -19,13 +19,17 @@
             command:
               - "/kube-iptables-tailer"
             env:
+              - name: POD_IDENTIFIER
+                value: name
               - name: LOG_LEVEL
-                value: info
+                value: debug
+              - name: JOURNAL_DIRECTORY
+                value: "/var/log/journal"
               - name: "IPTABLES_LOG_PATH"
-                value: "/var/log/iptables.log"
+                value: "/var/log/syslog"
               - name: "IPTABLES_LOG_PREFIX"
                 # log prefix defined in your iptables chains
-                value: "calico-drop:"
+                value: "calico-packet:"
             image: "boxinc/kube-iptables-tailer:v0.1.0"
             volumeMounts: 
               - name: "iptables-logs"

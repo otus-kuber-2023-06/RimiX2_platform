@@ -5,19 +5,19 @@ metadata:
 spec:
   selector: app == 'iperf3'
   types:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
   ingress:
-  - action: Allow
-    source:
-      selector: app == 'iperf3'
-  - action: Log
-  egress:
-  - action: Allow
-    destination:
-      selector: app == 'iperf3'
-      ports: 
-        - 5201
-    protocol: TCP
+    - action: Allow
+      source:
+        selector: app == 'iperf3'
+    - action: Log
 
-  - action: Log
+  egress:
+    - action: Allow
+      destination:
+        selector: app == 'iperf3'
+        ports: 
+          - 5201
+      protocol: TCP
+    - action: Log
