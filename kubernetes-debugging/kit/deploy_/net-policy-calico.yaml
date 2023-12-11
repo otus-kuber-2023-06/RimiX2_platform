@@ -1,0 +1,23 @@
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-iperf3-traffic-only
+spec:
+  selector: app == 'iperf3'
+  types:
+    - Ingress
+    - Egress
+  ingress:
+    - action: Allow
+      source:
+        selector: app == 'iperf3'
+    - action: Log
+
+  egress:
+    - action: Allow
+      destination:
+        selector: app == 'iperf3'
+        ports: 
+          - 5201
+      protocol: TCP
+    - action: Log
