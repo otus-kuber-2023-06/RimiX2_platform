@@ -1,6 +1,6 @@
-# 
+# Установка/обновление кластера
 
-## Установка кластера версии 1.23 с помощью kubeadm 
+## Установка версии 1.23 с помощью kubeadm 
 
 - 1 master-нода и 3 worker-ноды
 - Внутрикластерный etcd
@@ -77,7 +77,7 @@ worker2   Ready    <none>          1h   v1.23.00   192.168.0.21   <none>        
 
 Есть три подхода для обновления кластера:
 
-1) Замена всего кластера целиком на новый. Без риска, с возможностью отката.   Требуется: 
+1) Замена всего кластера целиком на новый (типа Blue/Green стратегии). Без риска, с возможностью отката. Требуется: 
     - дополнительное такое же количество вычислительных ресурсов (хостов)
     - маршрутизация части трафика через GLSB
     - сетевые доступы для разделяемых внешних сервисов
@@ -120,27 +120,34 @@ worker2   Ready    <none>          24h   v1.24.17
 
 ## Установка с помощью kubespray
 
-Инструмент `kubespray` - это Ansible плейбук. Он запускается на машине с установленным Python и pip. С неё требуется SSH-доступ c правом безпарольного SUDO на суперпользовательский (root) шелл до подготовленных к установке хостов.
+Инструмент `kubespray` - это Ansible плейбук. Он запускается на не-Windows машине с установленным Python3, pip и venv. С неё требуется SSH-доступ c правом безпарольного SUDO на суперпользовательский (root) шелл до подготовленных к установке хостов.
 
+```
 git clone https://github.com/kubernetes-sigs/kubespray.git
 cd kubespray
-pip install -r requirements.txt 
+python3 -m venv venv
+source venv/bin/activate
+pip3 install -r requirements.txt 
 cp -rfp inventory/sample inventory/mycluster
+```
+ В инвентарный файл "inventory.ini" заносятся необходимые для установки кластера адреса хостов:
+ ```
+ vi inventory/mycluster/inventory.ini
+ ``` 
 
-В инвентарный файл "inventory.ini" заносятся необходимые для установки кластера адреса хостов. При необходимости переменные для кастомизированной установки кластера записываются в отдельный файл или через опцию -e.
-
-Запускается плейбук "cluster.yml"
-`ansible-playbook -i inventory/mycluster/inventory.ini --become --user=${SSH_USERNAME} --key-file=${SSH_PRIVATE_KEY} cluster.yml
-`
+При необходимости переменные для кастомизированной установки кластера записываются в отдельный файл или через опцию -e. Запускается плейбук "cluster.yml" на установку: 
+```
+ansible-playbook -i inventory/mycluster/inventory.ini --become --user=${SSH_USERNAME} --key-file=${SSH_PRIVATE_KEY} cluster.yml
+``` 
 
 Для обновления или удаления кластера есть отдельные плейбуки (upgrade-cluster.yml/reset.yml) в том же репозитории kubespray.
 
-## (*) Установка кластера последней стабильной версии с помощью kubeadm
+## (*) Установка последней стабильной версии с помощью kubeadm
 
 - 3 master-ноды и 2 worker-ноды
 - Внутрикластерный etcd
 - CRI - cri-o
-- CNI - Calico
+- CNI - calico
 
 Setup:
 - 5 (3 master + 2 worker) VM/Bare metal (2xCPU, 4xRAM, 30GB) with unique machine IDs (/sys/class/dmi/id/product_uuid, interface's MAC address)
