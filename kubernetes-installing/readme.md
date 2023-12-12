@@ -1,6 +1,11 @@
 # 
 
-## Установка кластера версии 1.23 с 1 master-нодой и 3 worker-нодами с помощью kubeadm 
+## Установка кластера версии 1.23 с помощью kubeadm 
+
+- 1 master-нода и 3 worker-ноды
+- Внутрикластерный etcd
+- CRI - containerd
+- CNI - Flannel
 
 ### Master
 ```
@@ -17,12 +22,11 @@ EOF
 sudo modprobe overlay
 sudo modprobe br_netfilter
 
-??? net.ipv4.ip_forward = 1
-
 sudo tee /etc/sysctl.d/kubernetes.conf<<EOF
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 net/bridge/bridge-nf-call-arptables = 1
+net.ipv4.ip_forward = 1
 EOF
 sudo sysctl --system
 
@@ -131,7 +135,12 @@ cp -rfp inventory/sample inventory/mycluster
 
 Для обновления или удаления кластера есть отдельные плейбуки (upgrade-cluster.yml/reset.yml) в том же репозитории kubespray.
 
-## (*) Установка кластера с 3 master-нодами и 2 worker-нодами с помощью kubeadm
+## (*) Установка кластера последней стабильной версии с помощью kubeadm
+
+- 3 master-ноды и 2 worker-ноды
+- Внутрикластерный etcd
+- CRI - cri-o
+- CNI - Calico
 
 Setup:
 - 5 (3 master + 2 worker) VM/Bare metal (2xCPU, 4xRAM, 30GB) with unique machine IDs (/sys/class/dmi/id/product_uuid, interface's MAC address)
@@ -165,7 +174,7 @@ Setup:
     - apt-mark hold kubelet kubeadm kubectl
 - *cgroup driver (systemd)
 - master - init
-    - kubeadm init --pod-network-cidr=192.168.0.0/16 --cri-socket=unix:///var/run/crio/crio.sock --apiserver-advertise-address=<external-routable-ip-address>  --control-plane-endpoint (pod-network-cidr specific to certain network plugin)
+    - kubeadm init --pod-network-cidr=<specific_to_certain_network_plugin_cidr> --cri-socket=unix:///var/run/crio/crio.sock *--apiserver-cert-extra-sans=<> *--apiserver-advertise-address=<ip_or_default_to_nodes_ip>  --control-plane-endpoint=<ha_ip_or_domainname>
     - mkdir -p $HOME/.kube
     - cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
     - chown $(id -u):$(id -g) $HOME/.kube/config
@@ -177,9 +186,10 @@ Setup:
 
 
 Update:
-Backup.Velero or Heptio Ark.
-- master:
-kubeadm config migrate --old-config /etc/kubernetes/kubeadm-config.yaml --new-config /etc/kubernetes/kubeadm-config-new.yaml
+
+Backup. Velero/etcdctl snapshot  
+# Master   
+- kubeadm config migrate --old-config /etc/kubernetes/kubeadm-config.yaml --new-config /etc/kubernetes/kubeadm-config-new.yaml
     - update kubeadm
     - kubeadm upgrade plan
         - kubeadm upgrade apply [k8s-version]
@@ -189,37 +199,28 @@ kubeadm config migrate --old-config /etc/kubernetes/kubeadm-config.yaml --new-co
     - kubectl drain node (--ignore-daemonsets)
     - update kubelet, kubectl
     - kubectl uncordon
-- worker:
+# Worker
     - update kubeadm
     - kubeadm upgrade node
     - kubectl drain node (--ignore-daemonsets)
     - update kubelet, kubectl
     - kubectl uncordon 
-- kubectl get nodes
 
-
+kubectl get nodes
 
 
 ----
-kubeadm init
+kubeadm init phases:
 
-
-
-* — apiserver-advertise-address string : The IP address the API Server will advertise it’s listening on. If not set the default network interface will be used.
-* — pod-network-cidr string : Specify range of IP addresses for the pod network. If set, the control plane will automatically allocate CIDRs for every node.
-* — apiserver-cert-extra-sans : Optional extra Subject Alternative Names (SANs) to use for the API Server serving certificate. Can be both IP addresses and DNS names.
-
-The highly customizable kubeadm init command consists of these phases according to the official documentation:
-
-preflight: Sanity checks on the node
-certs: Create all the required client and server certificates for the kube scheduler, kubeproxy, etcd, and apiserver
-kubeconfig: Generate configuration files necessary for the cluster
-kubelet-start: Write and start the kubelet configuration
-control-plane: Generate the static pod manifests files that will start the apiserver, controller-manager and scheduler
-etcd: Start the etcd server
-upload-config: Store the kubeadm and kubelet configuration as a ConfigMap
-upload-certs: Store the generated certificates
-mark-control-plane: Signify whether a node is a part of the control plane
-bootstrap-token: Generate the token that is consumed by additional worker nodes to join the cluster
-kubelet-finalize: Update the kubelet when TLS bootstrap between new nodes is done
-addon: Install coredns and kube-proxy
+- preflight: Sanity checks on the node
+- certs: Create all the required client and server certificates for the kube - scheduler, kubeproxy, etcd, and apiserver
+- kubeconfig: Generate configuration files necessary for the cluster
+- kubelet-start: Write and start the kubelet configuration
+- control-plane: Generate the static pod manifests files that will start the apiserver, controller-manager and scheduler
+- etcd: Start the etcd server
+- upload-config: Store the kubeadm and kubelet configuration as a ConfigMap
+- upload-certs: Store the generated certificates
+- mark-control-plane: Signify whether a node is a part of the control plane
+- bootstrap-token: Generate the token that is consumed by additional worker nodes to join the cluster
+- kubelet-finalize: Update the kubelet when TLS bootstrap between new nodes is done
+- addon: Install coredns and kube-proxy
