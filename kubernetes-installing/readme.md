@@ -105,7 +105,9 @@ openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outfor
 sudo kubeadm join 192.168.0.5:6443 --token 407c28.kzqtakqmxc4ri40l \
         --discovery-token-ca-cert-hash sha256:313449f617fa1de378564ef80e0161d65ab707ff126a406f29f0aff5adbc85d5
 ```
+
 ### Получившийся результат
+
 ```
 $ kubectl get nodes -o wide
 NAME      STATUS   ROLES           AGE   VERSION    INTERNAL-IP    EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
@@ -134,7 +136,7 @@ sudo apt-mark unhold kubeadm && sudo apt-get install -y kubeadm=1.24.17-00 && su
 ```
 sudo kubeadm upgrade plan
 ```
-4. Применить обновление компонентов ядра (etcd, api-server, kube-proxy, scheduler, controller)(только для узлов Control Plane):
+4. Применить обновление компонентов ядра (etcd, api-server, kube-proxy, scheduler, controller-manager)(только для узлов Control Plane):
 ```
 sudo kubeadm upgrade apply v1.24.17
 ```
@@ -201,10 +203,14 @@ ansible-playbook -i inventory/mycluster/inventory.ini --become --user=${SSH_USER
 
 ## (*) Установка последней стабильной версии с помощью kubeadm
 Конфигурация кластера:
-- 3 master-ноды и 2 worker-ноды
+- подсеть /29
+- 3 master-ноды (2xCPU, 4xRAM, 20GB) и 2 worker-ноды (2xCPU, 4xRAM, 30GB)
+- OS - debian 12
 - Внутрикластерный etcd
 - CRI - cri-o
 - CNI - calico
+- Ingress-контроллер Nginx
+- внешний IP для единой точки к API кластера (HA/LB)
 
 Setup:
 - 5 (3 master + 2 worker) VM/Bare metal (2xCPU, 4xRAM, 30GB) with unique machine IDs (/sys/class/dmi/id/product_uuid, interface's MAC address)
@@ -214,8 +220,6 @@ Setup:
 - hostname
 - ssh keys
 - swap off
-    - swapoff -a
-    - vi /etc/fstab
 - container runtime (cri-o) 
   -  echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
   -  echo "deb [signed-by=/usr/share/keyrings/libcontainers-crio-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$VERSION/$OS/ /" > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:$VERSION.list
