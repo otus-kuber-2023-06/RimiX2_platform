@@ -22,7 +22,7 @@
 - CRI - containerd
 - CNI - Flannel
 - OS - Ubuntu 18.04
-- подсеть /29
+- подсеть /28
 
 ### Мастер нода (Control Plane)
 1. Установить конфигурацию SELinux (при наличии):
@@ -203,8 +203,8 @@ ansible-playbook -i inventory/mycluster/inventory.ini --become --user=${SSH_USER
 
 ## (*) Установка последней стабильной версии с помощью kubeadm
 Конфигурация кластера:
-- подсеть /29
-- 3 master-ноды (2xCPU, 4xRAM, 20GB) и 2 worker-ноды (2xCPU, 4xRAM, 30GB)
+- подсеть /28
+- 3 master-ноды (2xCPU, 4xRAM, 15GB) и 2 worker-ноды (2xCPU, 4xRAM, 30GB)
 - OS - debian 12
 - Внутрикластерный etcd
 - CRI - cri-o
