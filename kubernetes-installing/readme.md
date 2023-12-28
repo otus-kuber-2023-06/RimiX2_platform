@@ -204,7 +204,7 @@ ansible-playbook -i inventory/mycluster/inventory.ini --become --user=${SSH_USER
 ## (*) Установка последней стабильной версии с помощью kubeadm
 Конфигурация кластера:
 - подсеть /28
-- 3 master-ноды (2xCPU, 4xRAM, 15GB) и 2 worker-ноды (2xCPU, 4xRAM, 30GB)
+- 3 master-ноды (2xCPU, 2xRAM, 15GB) и 2 worker-ноды (4xCPU, 8xRAM, 30GB)
 - OS - debian 12
 - Внутрикластерный etcd
 - CRI - cri-o
