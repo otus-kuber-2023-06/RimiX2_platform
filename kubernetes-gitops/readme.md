@@ -263,14 +263,14 @@ kubectl apply -f clusters/okt-dd/microservices-demo-charts/
 flux get hr -n microservices-demo-charts
 ```
 
-Внесем небольшое изменение в микросервис frontend:
+Внесем небольшое изменение в микросервис frontend - поменяем \<title\> страниц на "Hipster Shop":
 
 ```
 cd .\src\frontend\
 sed -i 's|Online Boutique|Hipster Shop|' templates/header.html
 ```
 
-И выпустим "новый" образ :
+Соберем и отправим "новый" образ в репозиторий образов "microservices-demo" на Gitlab.com :
 
 ```
 docker login registry.gitlab.com
@@ -296,8 +296,70 @@ frontend   40h   True    Helm upgrade succeeded for release microservices-demo-c
 
 ## Flagger 
 
-### Progressive delivery (Canary, A/B Testing, Blue/Green)
+Flagger - это инструмент прогрессивной доставки (Progressive delivery), автоматизирующий процесс выпуска приложения, работающего в kubernetes, для снижения риска внедрения новой версии в промышленную среду. Это достигается за счет постепенного переключения трафика, одновремення отслеживая метрики.
+Для маршрутизации он использует Service Mesh или Ingress-контроллер.
+Для анализа состоянии релизов используется средства мониторинга.
+Также имеет возможность оповещения через различные каналы.
+Поддерживаются следующие стратегии:
+- Canary (канареечное)
+- A/B Testing
+- Blue/Green (зеркальное)
 
-Argo CD использует Argo Rollouts, который является расширением. После установки объект «Rollout» становится полной заменой стандартного объекта «Deployment», 
+### Установка Istio (1.20.1) c телеметрией Prometheus
+```
+cd /tmp && curl -L https://istio.io/downloadIstio | sh -
+cd istio-1.20.1/bin
+./istioctl x precheck
+./istioctl manifest install --set profile=default
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/samples/addons/prometheus.yaml
+```
+### Установка Flagger
+
+`kubectl apply -k github.com/fluxcd/flagger/kustomize/istio` - будет установлен в неймспейс "istio-system"
+
+### Тестирование канареечного развертывания c помощью маршрутизации через Service Mesh Istio
+
+![](img/flagger-canary-steps.png)
+
+Переключим Flux CD на другую ветку инфраструктурного репозитория. В этой ветке будет манифесты flux-system и манифесты установки "microservices-demo" (не Helm-release).
+Для этого изменим ресурс GitRepository "flux-system" на лету и затем обязательно в самом репозитории в самой ветке:
+```
+rm -rf ./clusters/okt-dd/default
+rm -rf ./clusters/okt-dd/microservices-demo-charts
+
+kubectl patch gitrepository flux-system -n flux-system --type='json' -p='[{"op": "replace", "path": "/spec/ref/branch", "value": "feature/flagger"}]'
+
+sed -i 's|branch: main|branch: feature/flagger|' ./clusters/okt-dd/flux-system/gotk-sync.yaml
+git commit -A "change git flux-system infra-repo branch"
+git push
+```
+Пометим неймспейс "microservices-demo" для автоматического внедрения сайдкар-контейнеров с envoy-proxy во вновь создаваемые поды, а также внесем это изменение в инфраструткурный репозиторий, чтобы метка не слетела при следующей синхронизации Flux CD:
+```
+kubectl label namespace microservices-demo istio-injection=enabled
+```
+Для того чтобы во все поды приложения "microservices-demo", запущенные до установки `istio`, был внедрен сайдкар-контейнер можно просто удалить их. Новые поды запустятся сразу уже с сайдкарами:
+```
+kubectl delete pods --all -n microservices-demo
+```
+Применим необходимые для доступа снаружи к "microservices-demo" манифесты:
+`deploy/charts/frontend/templates/istio-gw.yaml` - манифест Istio Gateway для входящего трафика  
+`deploy/charts/frontend/templates/istio-vs.yaml` - манифест Istio VirtualService для маршрутизации в сервис "frontend"  
+
+```
+./istioctl analyze -n microservices-demo
+Warning [IST0162] (Gateway microservices-demo/frontend) The gateway is listening on a target port (port 80) that is not defined in the Service associated with its workload instances (Pod selector istio=ingressgateway). If you need to access the gateway port through the gateway Service, it will not be available.
+```
+Создадим необходимый для реализации "плавного" развертывания новых версий сервиса "frontend":
+`flagger-canary.yaml` - Flagger манифест стратегии Canary
+
+Поменяем образ:
+```
+kubectl -n microservices-demo set image deployment/frontend server=registry.gitlab.com/rimix2/microservices-demo/frontend:0.0.1
+```
+```
+kubectl get canaries -n microservices-demo
+kubectl describe canary -n microservices-demo
+```
+Для реализации прогрессивной доставки в Argo CD используется расширение Argo Rollouts. После его установки объект «Rollout» становится полной заменой стандартного объекта «Deployment», 
 но предоставляет дополнительные стратегии развертывания, такие как «Blue/Green» и «Canary».
 
