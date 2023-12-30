@@ -345,21 +345,49 @@ kubectl delete pods --all -n microservices-demo
 `deploy/charts/frontend/templates/istio-gw.yaml` - манифест Istio Gateway для входящего трафика  
 `deploy/charts/frontend/templates/istio-vs.yaml` - манифест Istio VirtualService для маршрутизации в сервис "frontend"  
 
+Валидация:
 ```
 ./istioctl analyze -n microservices-demo
 Warning [IST0162] (Gateway microservices-demo/frontend) The gateway is listening on a target port (port 80) that is not defined in the Service associated with its workload instances (Pod selector istio=ingressgateway). If you need to access the gateway port through the gateway Service, it will not be available.
 ```
-Создадим необходимый для реализации "плавного" развертывания новых версий сервиса "frontend":
+Применим необходимый для реализации "плавного" развертывания новых версий сервиса "frontend": 
+```
+kubectl apply -f deploy/charts/frontend/templates/flagger-canary.yaml
+```
 `flagger-canary.yaml` - Flagger манифест стратегии Canary
 
-Поменяем образ:
+После его применения произойдёт следующее:
+- deployment.apps/frontend будет отключен (отмасштабирован в 0 реплик)
+- deployment.apps/frontend-primary будет создан
+
+- service/frontend будет изменен. Эндпоинты
+- service/frontend-canary будет создан без эндпоинтов
+- service/frontend-primary будет создан с эндпоинтами
+
+- Текущий VirtualService ресурс frontend будет изменен. Добавится балансировка
+- Будет создан DestinationRule ресурс frontend-canary
+- Будет создан DestinationRule ресурс frontend-primary
+
+Поменяем образ c "gcr.io/google-samples/microservices-demo/frontend:v0.8.1":
 ```
 kubectl -n microservices-demo set image deployment/frontend server=registry.gitlab.com/rimix2/microservices-demo/frontend:0.0.1
 ```
+После этого произойдет следующее:
+- будет инициирован процесс прогрессивного развертывания по событию изменения образа у deployment.apps/frontend
+- пройдут проверки телеметрии (prometheus метрик успешных и быстрых по времени ответов) на допустимые заданные значения
+- процент маршрутизации трафика на новую версию увеличится ещё на определенное в шаге значение
 ```
 kubectl get canaries -n microservices-demo
+NAME       STATUS        WEIGHT   LASTTRANSITIONTIME
+frontend   Progressing   10       2023-12-30T21:37:33Z
 kubectl describe canary -n microservices-demo
 ```
+
+A canary deployment is triggered by changes in any of the following objects:
+- Deployment PodSpec (container image, command, ports, env, resources, etc)
+- ConfigMaps mounted as volumes or mapped to environment variables
+- Secrets mounted as volumes or mapped to environment variables
+
 Для реализации прогрессивной доставки в Argo CD используется расширение Argo Rollouts. После его установки объект «Rollout» становится полной заменой стандартного объекта «Deployment», 
 но предоставляет дополнительные стратегии развертывания, такие как «Blue/Green» и «Canary».
 

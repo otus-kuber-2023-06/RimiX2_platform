@@ -21,16 +21,15 @@ spec:
     trafficPolicy:
       tls:
         mode: DISABLE
-    # Istio retry policy (optional)
     retries:
       attempts: 3
-      perTryTimeout: 1s
+      perTryTimeout: 3s
       retryOn: "gateway-error,connect-failure,refused-stream"
   analysis:
     interval: 1m
     threshold: 5
     maxWeight: 50
-    stepWeight: 10
+    stepWeight: 25
     metrics:
       - name: request-success-rate
         thresholdRange:
