@@ -342,7 +342,7 @@ kubectl label namespace microservices-demo istio-injection=enabled
 kubectl delete pods --all -n microservices-demo
 ```
 Применим необходимые для доступа снаружи к "microservices-demo" манифесты:
-`deploy/charts/frontend/templates/istio-gw.yaml` - манифест Istio Gateway для входящего трафика  
+`istio-gw.yaml` - манифест Istio Gateway для входящего трафика  
 `deploy/charts/frontend/templates/istio-vs.yaml` - манифест Istio VirtualService для маршрутизации в сервис "frontend"  
 
 Валидация:
@@ -354,39 +354,76 @@ Warning [IST0162] (Gateway microservices-demo/frontend) The gateway is listening
 ```
 kubectl apply -f deploy/charts/frontend/templates/flagger-canary.yaml
 ```
-`flagger-canary.yaml` - Flagger манифест стратегии Canary
+`flagger-canary.yaml` - манифест стратегии Canary для Flagger
 
-После его применения произойдёт следующее:
-- deployment.apps/frontend будет отключен (отмасштабирован в 0 реплик)
-- deployment.apps/frontend-primary будет создан
+После его применения Flagger произведет следующие изменения:
+- по рабочей нагрузке:
+  - ресурс deployment "frontend" будет выключен(отмасштабирован в 0 реплик), cоответственно все поды с app=frontend будут удалены
+  - ресурс deployment "frontend-primary" будет создан c той же под-спецификацией, но с меткой app=frontend-primary, cоответственно появятся поды с app=frontend-primary
 
-- service/frontend будет изменен. Эндпоинты
-- service/frontend-canary будет создан без эндпоинтов
-- service/frontend-primary будет создан с эндпоинтами
+- по сервисам:
+  - service/frontend-canary будет создан как старая копия существующего service/frontend, т.е. с селектором app=frontend соответственно будет без эндпоинтов
+  - service/frontend-primary будет создан с селектором app=frontend-primary и соответственно будет иметь уже другие эндпоинты
+  - существующего service/frontend селектор будет изменен на использование селектора app=frontend-primary и соответственно будет иметь уже другие эндпоинты
 
-- Текущий VirtualService ресурс frontend будет изменен. Добавится балансировка
-- Будет создан DestinationRule ресурс frontend-canary
-- Будет создан DestinationRule ресурс frontend-primary
+- по объектам Istio:
+  - текущий ресурс VirtualService "frontend" будет изменен. Будет установлена маршрутизация 100% трафика на группу frontend-primary и 0% - на frontend-canary
+  - будет создан новый DestinationRule ресурс c группой frontend-canary (с апстримом на frontend-canary сервис)
+  - будет создан новый DestinationRule ресурс c группой frontend-primary (с апстримом на frontend-primary сервис)
+
+По сути для клиента при обращении к фронтенду ничего не изменится - будет также отвечать текущая версия "frontend". Но для Flagger уже будет подготовлен "сценарий" прогрессивного развертывания новых версий "frontend".
+
+Т.к. "сценарий" завязан на метрики обращений через Ingress-gateway к сервису "frontend", необходимо обеспечить постоянный поток таких обращений именно на внешнюю точку (Ingress-gateway). Иначе метрика будет недостаточной (пустой) для критерия успешноcти Canary-развертывания. Для этого нужно в спецификации сервиса-эмулятора "load-generator" изменить адреса "frontend" в переменных "FRONTEND_ADDR" на адрес Ingress-gateway (обычно это адрес LB сервиса istio-ingressgateway).
 
 Поменяем образ c "gcr.io/google-samples/microservices-demo/frontend:v0.8.1":
 ```
 kubectl -n microservices-demo set image deployment/frontend server=registry.gitlab.com/rimix2/microservices-demo/frontend:0.0.1
 ```
-После этого произойдет следующее:
-- будет инициирован процесс прогрессивного развертывания по событию изменения образа у deployment.apps/frontend
-- пройдут проверки телеметрии (prometheus метрик успешных и быстрых по времени ответов) на допустимые заданные значения
-- процент маршрутизации трафика на новую версию увеличится ещё на определенное в шаге значение
+Посмотрим статус и журнал Canary-развертывания:
 ```
 kubectl get canaries -n microservices-demo
 NAME       STATUS        WEIGHT   LASTTRANSITIONTIME
-frontend   Progressing   10       2023-12-30T21:37:33Z
-kubectl describe canary -n microservices-demo
-```
+frontend   Initialized   0        2023-12-31T10:05:43Z
 
-A canary deployment is triggered by changes in any of the following objects:
-- Deployment PodSpec (container image, command, ports, env, resources, etc)
-- ConfigMaps mounted as volumes or mapped to environment variables
-- Secrets mounted as volumes or mapped to environment variables
+kubectl describe canary -n microservices-demo
+...
+  Normal  Synced  8s    flagger  New revision detected! Scaling up frontend.microservices-demo
+  Normal   Synced  73s    flagger  Starting canary analysis for frontend.microservices-demo
+  Normal   Synced  73s    flagger  Advance frontend.microservices-demo canary weight 25  
+...
+
+kubectl get canaries -n microservices-demo
+NAME       STATUS        WEIGHT   LASTTRANSITIONTIME
+frontend   Progressing   50       2023-12-31T10:56:43Z
+
+kubectl describe canary -n microservices-demo
+...
+  Normal   Synced  3m12s (x3 over 39m)  flagger  New revision detected! Scaling up frontend.microservices-demo
+  Normal   Synced  2m12s (x3 over 38m)  flagger  Starting canary analysis for frontend.microservices-demo
+  Normal   Synced  2m12s (x3 over 38m)  flagger  Advance frontend.microservices-demo canary weight 25
+  Normal   Synced  72s                  flagger  Advance frontend.microservices-demo canary weight 50
+  Normal   Synced  12s                  flagger  Copying frontend.microservices-demo template spec to frontend-primary.microservices-demo
+...
+
+kubectl get canaries -n microservices-demo
+NAME       STATUS       WEIGHT   LASTTRANSITIONTIME
+frontend   Finalising   0        2023-12-31T10:58:43Z
+
+kubectl get canaries -n microservices-demo
+NAME       STATUS       WEIGHT   LASTTRANSITIONTIME
+frontend   Succeeded   0        2023-12-31T10:59:43Z
+```
+По событию изменения образа в спецификации контейнера пода в deployment "frontend" будет инициирован процесс прогрессивного развертывания:
+- deployment "frontend" будет включен, появятся поды "frontend" c новой версией образа и соответственно у сервиса "frontend-canary" появятся эндпоинты
+- процент маршрутизации трафика на новую версию увеличится на значение одного шага (virtualservice frontend)
+- произойдет анализ подов по заданным в "сценарии" проверкам телеметрии (prometheus метрики успешных и быстрых по времени ответов)
+- в случае успешного анализа процент маршрутизации трафика на новую версию увеличится ещё на определенное в шаге значение, но не превысит предельный процент
+- в случае неудачи и нескольких попыток анализа развертывание считается неуспешным. deployment "frontend" будет выключен, трафик полностью (100%) будет направлен на текущую версию (поды из "frontend-primary")
+- в случае успешного прохождения всех шагов развертывание считается успешным. Спецификация новой версии из deployment "frontend" будет скопирована в deployment "frontend-primary", поды которого будут перезагружены, и, таким образом текущая версия обновится. Трафик выключен снова будет полностью (100%) будет направлен на текущую уже обновленную версию (поды из "frontend-primary"). deployment "frontend" будет выключен
+
+Возможные триггеры инициации процесса Canary-развертывания:
+- изменена спецификация подов в Deployment (образ, команда, порты, переменные окружения, ресурсы и т.п.)
+- изменены объекты ConfigMap/Secret, примонтированные как тома либо транслированные в переменные окружения
 
 Для реализации прогрессивной доставки в Argo CD используется расширение Argo Rollouts. После его установки объект «Rollout» становится полной заменой стандартного объекта «Deployment», 
 но предоставляет дополнительные стратегии развертывания, такие как «Blue/Green» и «Canary».
